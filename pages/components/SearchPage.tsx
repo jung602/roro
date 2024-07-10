@@ -125,7 +125,7 @@ const SearchPage: React.FC = () => {
           </div>
         ))}
       </div>
-      <div className="bg-black p-4">
+      <div className="bg-black p-4 w-full">
         {locations.map((location, index) => (
           <div key={index} className="bg-gray-800 text-white rounded-full px-3 py-1 mb-2 flex items-center">
             <span className="mr-2">{location.name}</span>
@@ -137,12 +137,14 @@ const SearchPage: React.FC = () => {
             </button>
           </div>
         ))}
+        <div className="w-full flex items-center justify-center">
         <button
           onClick={handleSearch}
-          className="mt-4 bg-yellow-400 text-black rounded-full w-12 h-12 flex items-center justify-center"
+          className="mt-4 bg-yellow-400 text-black rounded-full w-12 h-12"
         >
           &gt;
         </button>
+        </div>
       </div>
     </div>
   );
