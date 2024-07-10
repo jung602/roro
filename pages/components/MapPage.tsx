@@ -4,14 +4,6 @@ import { useRouter } from 'next/router';
 import { GoogleMap, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api';
 import * as THREE from 'three';
 
-const DynamicCanvas = dynamic(() => import('@react-three/fiber').then((mod) => mod.Canvas), {
-  ssr: false,
-});
-
-const DynamicOrbitControls = dynamic(() => import('@react-three/drei').then((mod) => mod.OrbitControls), {
-  ssr: false,
-});
-
 const DynamicRoute3D = dynamic(() => import('./Route3D'), {
   ssr: false,
 });
@@ -78,12 +70,7 @@ const MapPage: React.FC = () => {
       <div className="flex-1 bg-yellow-400 p-4 relative">
         <div className="absolute inset-0 dot-grid"></div>
         <div className="h-full relative z-10">
-          <DynamicCanvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
-            <color attach="background" args={["#FFCC00"]} />
-            <ambientLight intensity={10} />
-            <DynamicRoute3D path3D={path3D} />
-            <DynamicOrbitControls enableRotate={true} enableZoom={true} />
-          </DynamicCanvas>
+          <DynamicRoute3D path3D={path3D} />
         </div>
       </div>
       <div className="bg-white text-black p-4 rounded-t-3xl">

@@ -1,5 +1,5 @@
 import React, { useRef, useEffect } from 'react';
-import { useThree, ThreeElements } from '@react-three/fiber';
+import { useThree, Canvas } from '@react-three/fiber';
 import { Sphere } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -7,7 +7,7 @@ interface Route3DProps {
   path3D: THREE.Vector3[];
 }
 
-const Route3D: React.FC<Route3DProps> = ({ path3D }) => {
+const Route3DContent: React.FC<Route3DProps> = ({ path3D }) => {
   const { camera } = useThree();
   const tubeRef = useRef<THREE.Mesh>(null);
 
@@ -53,6 +53,16 @@ const Route3D: React.FC<Route3DProps> = ({ path3D }) => {
         </Sphere>
       ))}
     </>
+  );
+};
+
+const Route3D: React.FC<Route3DProps> = ({ path3D }) => {
+  return (
+    <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
+      <color attach="background" args={["#FFCC00"]} />
+      <ambientLight intensity={10} />
+      <Route3DContent path3D={path3D} />
+    </Canvas>
   );
 };
 
