@@ -5,5 +5,9 @@ const SearchPage = dynamic(() => import('./components/SearchPage'), {
 });
 
 export default function Home() {
-  return <SearchPage />;
+  return (
+    <div className="h-[100dvh]">
+      <SearchPage />
+    </div>
+  );
 }

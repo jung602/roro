@@ -1,5 +1,10 @@
 import MapPage from './components/MapPage';
 
 export default function Map() {
-  return <MapPage />;
+  return (
+    <div className="h-[100dvh]">
+      <MapPage />
+    </div>
+  );
+
 }

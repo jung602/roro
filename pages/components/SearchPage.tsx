@@ -89,8 +89,8 @@ const SearchPage: React.FC = () => {
   if (!isLoaded) return <div>Loading...</div>;
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white">
-      <div className="flex-1 bg-yellow-400 p-4 rounded-b-3xl">
+    <div className="flex flex-col h-[100dvh] bg-black text-white">
+      <div className="flex-1 bg-yellow-400 p-4 rounded-b-3xl overflow-auto">
         <h2 className="text-3xl font-bold mb-4 text-black">Where did you visit?</h2>
         <form onSubmit={handleLocationSubmit} className="mb-4">
           <div className="relative">

@@ -66,7 +66,7 @@ const MapPage: React.FC = () => {
   }, [isLoaded, locations, loadError]);
 
   return (
-    <div className="flex flex-col h-screen bg-black text-white">
+    <div className="flex flex-col h-[100dvh] bg-black text-white">
       <div className="flex-1 bg-yellow-400 p-4 relative">
         <div className="absolute inset-0 dot-grid"></div>
         <div className="h-full relative z-10">
