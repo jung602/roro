@@ -1,15 +1,17 @@
-import React, { useRef, useEffect } from 'react';
-import { useThree, Canvas } from '@react-three/fiber';
-import { Sphere } from '@react-three/drei';
+import React, { useRef, useEffect, useMemo } from 'react';
+import { useThree, Canvas, useFrame } from '@react-three/fiber';
+import { Sphere, OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
 
 interface Route3DProps {
   path3D: THREE.Vector3[];
+  locations: {name: string, address: string}[];
 }
 
-const Route3DContent: React.FC<Route3DProps> = ({ path3D }) => {
-  const { camera } = useThree();
-  const tubeRef = useRef<THREE.Mesh>(null);
+const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
+  const { camera, scene } = useThree();
+  const lineRef = useRef<any>(null);  // 'any' 타입을 사용
+  const controlsRef = useRef<any>(null);
 
   useEffect(() => {
     if (path3D.length > 0) {
@@ -29,39 +31,65 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D }) => {
       }
 
       camera.updateProjectionMatrix();
-    }
-  }, [path3D, camera]);
 
-  useEffect(() => {
-    if (tubeRef.current && path3D.length > 1) {
-      const curve = new THREE.CatmullRomCurve3(path3D);
-      const geometry = new THREE.TubeGeometry(curve, 64, 0.03, 16, false);
-      tubeRef.current.geometry = geometry;
+      if (controlsRef.current) {
+        controlsRef.current.target.copy(center);
+        controlsRef.current.update();
+      }
     }
-  }, [path3D]);
+  }, [path3D, camera, scene]);
+
+  const locationPoints = useMemo(() => {
+    if (path3D.length >= 2 && locations.length >= 2) {
+      return [path3D[0], ...path3D.filter((_, index) => index % Math.floor(path3D.length / (locations.length - 1)) === 0), path3D[path3D.length - 1]];
+    }
+    return [];
+  }, [path3D, locations]);
+
+  useFrame(() => {
+    if (lineRef.current && lineRef.current.computeLineDistances) {
+      lineRef.current.computeLineDistances();
+    }
+  });
 
   return (
     <>
-      {path3D.length > 1 && (
-        <mesh ref={tubeRef}>
-          <meshStandardMaterial color="white" roughness={1} metalness={0} opacity={0.5} transparent />
-        </mesh>
-      )}
-      {path3D.map((point, index) => (
+      <Line
+        ref={lineRef}
+        points={path3D}
+        color="white"
+        lineWidth={50}
+        dashed={false}
+      />
+      {locationPoints.map((point, index) => (
         <Sphere key={index} args={[0.01, 32, 32]} position={point}>
           <meshStandardMaterial color="yellow" roughness={1} metalness={0} />
         </Sphere>
       ))}
+      <Sphere args={[0.01, 32, 32]} position={path3D[0]}>
+        <meshStandardMaterial color="yellow" roughness={1} metalness={0} />
+      </Sphere>
+      <Sphere args={[0.01, 32, 32]} position={path3D[path3D.length - 1]}>
+        <meshStandardMaterial color="yellow" roughness={1} metalness={0} />
+      </Sphere>
+      <OrbitControls 
+        ref={controlsRef}
+        enablePan={true}
+        enableZoom={true}
+        enableRotate={true}
+        zoomSpeed={0.5}
+        rotateSpeed={0.5}
+        panSpeed={0.5}
+      />
     </>
   );
 };
 
-const Route3D: React.FC<Route3DProps> = ({ path3D }) => {
+const Route3D: React.FC<Route3DProps> = ({ path3D, locations }) => {
   return (
-    <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
-      <color attach="background" args={["#FFCC00"]} />
-      <ambientLight intensity={10} />
-      <Route3DContent path3D={path3D} />
+    <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 300, 0], up: [0, 0, -1] }}>
+      <ambientLight intensity={5} />
+      <Route3DContent path3D={path3D} locations={locations} />
     </Canvas>
   );
 };

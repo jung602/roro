@@ -70,8 +70,7 @@ const MapPage: React.FC = () => {
       <div className="flex-1 bg-yellow-400 p-4 relative">
         <div className="absolute inset-0 dot-grid"></div>
         <div className="h-full relative z-10">
-          <DynamicRoute3D path3D={path3D} />
-        </div>
+        <DynamicRoute3D path3D={path3D} locations={JSON.parse(locations as string)} />        </div>
       </div>
       <div className="bg-white text-black p-4 rounded-t-3xl">
         <h3 className="text-xl font-bold mb-2">Vinyl Road</h3>
