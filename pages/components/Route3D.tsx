@@ -10,8 +10,13 @@ interface Route3DProps {
 
 const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
   const { camera, scene } = useThree();
-  const lineRef = useRef<any>(null);  // 'any' 타입을 사용
+  const lineRef = useRef<any>(null);
   const controlsRef = useRef<any>(null);
+  const spheresRef = useRef<THREE.Mesh[]>([]);
+
+  const baseLineWidth = 30;
+  const baseSphereRadius = 0.7;
+  const baseDistance = 100;  // 기준 거리
 
   useEffect(() => {
     if (path3D.length > 0) {
@@ -47,8 +52,19 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
   }, [path3D, locations]);
 
   useFrame(() => {
-    if (lineRef.current && lineRef.current.computeLineDistances) {
-      lineRef.current.computeLineDistances();
+    if (lineRef.current && controlsRef.current) {
+      const distance = camera.position.distanceTo(controlsRef.current.target);
+      const scale = distance / baseDistance;
+      
+      // 라인 두께 조정
+      lineRef.current.lineWidth = baseLineWidth / scale;
+
+      // 구체 크기 조정
+      spheresRef.current.forEach(sphere => {
+        if (sphere) {
+          sphere.scale.setScalar(scale);
+        }
+      });
     }
   });
 
@@ -58,20 +74,21 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
         ref={lineRef}
         points={path3D}
         color="white"
-        lineWidth={30}
+        lineWidth={baseLineWidth}
         dashed={false}
       />
       {locationPoints.map((point, index) => (
-        <Sphere key={index} args={[0.01, 32, 32]} position={point}>
-          <meshStandardMaterial color="yellow" roughness={1} metalness={0} />
+        <Sphere 
+          key={index} 
+          args={[baseSphereRadius, 32, 32]} 
+          position={point}
+          ref={el => {
+            if (el) spheresRef.current[index] = el;
+          }}
+        >
+          <meshStandardMaterial color="#F8D355" roughness={1} metalness={0} />
         </Sphere>
       ))}
-      <Sphere args={[0.01, 32, 32]} position={path3D[0]}>
-        <meshStandardMaterial color="yellow" roughness={1} metalness={0} />
-      </Sphere>
-      <Sphere args={[0.01, 32, 32]} position={path3D[path3D.length - 1]}>
-        <meshStandardMaterial color="yellow" roughness={1} metalness={0} />
-      </Sphere>
       <OrbitControls 
         ref={controlsRef}
         enablePan={true}
@@ -88,8 +105,7 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
 const Route3D: React.FC<Route3DProps> = ({ path3D, locations }) => {
   return (
     <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
-
-      <ambientLight intensity={5} />
+      <ambientLight intensity={10} />
       <Route3DContent path3D={path3D} locations={locations} />
     </Canvas>
   );
