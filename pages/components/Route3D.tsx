@@ -58,7 +58,7 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
         ref={lineRef}
         points={path3D}
         color="white"
-        lineWidth={50}
+        lineWidth={30}
         dashed={false}
       />
       {locationPoints.map((point, index) => (
@@ -87,7 +87,8 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
 
 const Route3D: React.FC<Route3DProps> = ({ path3D, locations }) => {
   return (
-    <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 300, 0], up: [0, 0, -1] }}>
+    <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
+
       <ambientLight intensity={5} />
       <Route3DContent path3D={path3D} locations={locations} />
     </Canvas>
