@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { useThree, Canvas, useFrame } from '@react-three/fiber';
+import { useThree, Canvas } from '@react-three/fiber';
 import { Sphere, OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -12,11 +12,8 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
   const { camera, scene } = useThree();
   const lineRef = useRef<any>(null);
   const controlsRef = useRef<any>(null);
-  const spheresRef = useRef<THREE.Mesh[]>([]);
 
-  const baseLineWidth = 30;
   const baseSphereRadius = 0.7;
-  const baseDistance = 100;  // 기준 거리
 
   useEffect(() => {
     if (path3D.length > 0) {
@@ -51,30 +48,13 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
     return [];
   }, [path3D, locations]);
 
-  useFrame(() => {
-    if (lineRef.current && controlsRef.current) {
-      const distance = camera.position.distanceTo(controlsRef.current.target);
-      const scale = distance / baseDistance;
-      
-      // 라인 두께 조정
-      lineRef.current.lineWidth = baseLineWidth / scale;
-
-      // 구체 크기 조정
-      spheresRef.current.forEach(sphere => {
-        if (sphere) {
-          sphere.scale.setScalar(scale);
-        }
-      });
-    }
-  });
-
   return (
     <>
       <Line
         ref={lineRef}
         points={path3D}
         color="white"
-        lineWidth={baseLineWidth}
+        lineWidth={30}
         dashed={false}
       />
       {locationPoints.map((point, index) => (
@@ -82,11 +62,8 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
           key={index} 
           args={[baseSphereRadius, 32, 32]} 
           position={point}
-          ref={el => {
-            if (el) spheresRef.current[index] = el;
-          }}
         >
-          <meshStandardMaterial color="#F8D355" roughness={1} metalness={0} />
+          <meshStandardMaterial color="black" roughness={1} metalness={0} />
         </Sphere>
       ))}
       <OrbitControls 
@@ -97,15 +74,23 @@ const Route3DContent: React.FC<Route3DProps> = ({ path3D, locations }) => {
         zoomSpeed={0.5}
         rotateSpeed={0.5}
         panSpeed={0.5}
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN
+        }}
       />
     </>
   );
 };
 
 const Route3D: React.FC<Route3DProps> = ({ path3D, locations }) => {
+  if (path3D.length === 0 || locations.length === 0) {
+    return <div>Loading...</div>;
+  }
+
   return (
     <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
-      <ambientLight intensity={10} />
+      <ambientLight intensity={5} />
       <Route3DContent path3D={path3D} locations={locations} />
     </Canvas>
   );
