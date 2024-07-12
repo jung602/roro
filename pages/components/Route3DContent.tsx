@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useMemo } from 'react';
-import { useThree, useFrame } from '@react-three/fiber';
+import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { Sphere, OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -8,7 +8,7 @@ interface Route3DContentProps {
   locations: {name: string, address: string}[];
 }
 
-const Route3DContent: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
+const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
   const { camera, scene } = useThree();
   const lineRef = useRef<any>(null);
   const controlsRef = useRef<any>(null);
@@ -102,4 +102,13 @@ const Route3DContent: React.FC<Route3DContentProps> = ({ path3D, locations }) =>
   );
 };
 
-export default Route3DContent;
+const Route3DContent: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
+    return (
+      <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
+        <ambientLight intensity={5} />
+        <Scene path3D={path3D} locations={locations} />
+      </Canvas>
+    );
+  };
+  
+  export default Route3DContent;

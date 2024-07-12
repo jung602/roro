@@ -71,15 +71,15 @@ const MapPage: React.FC = () => {
   }, [isLoaded, locationList, loadError]);
 
   return (
-    <div className="flex flex-col h-[100dvh] bg-black text-white">
-      <div className="flex-1 bg-yellow-400 p-4 relative">
+    <div className="flex flex-col h-[100dvh] bg-yellow-400 text-white">
+      <div className="flex-1 p-4 relative">
         <div className="absolute inset-0 dot-grid"></div>
         <div className="h-full relative z-10">
           <DynamicRoute3D path3D={path3D} locations={locationList} />
         </div>
       </div>
       <div className="bg-white text-black p-4 rounded-t-3xl">
-        <h3 className="text-xl font-bold mb-2">Vinyl Road</h3>
+        <h3 className="text-xl font-bold mb-2">Road</h3>
         <div className="grid grid-cols-3 gap-4">
           <div>
             <p className="text-sm text-gray-500">Places</p>

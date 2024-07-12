@@ -1,6 +1,5 @@
 import React from 'react';
 import dynamic from 'next/dynamic';
-import { Canvas } from '@react-three/fiber';
 import * as THREE from 'three';
 
 const Route3DContent = dynamic(() => import('./Route3DContent'), { ssr: false });
@@ -11,16 +10,15 @@ interface Route3DProps {
 }
 
 const Route3D: React.FC<Route3DProps> = ({ path3D, locations }) => {
+  if (typeof window === 'undefined') {
+    return null; // 서버 사이드에서는 아무것도 렌더링하지 않음
+  }
+
   if (path3D.length === 0 || locations.length === 0) {
     return <div>Loading...</div>;
   }
 
-  return (
-    <Canvas camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -1] }}>
-      <ambientLight intensity={5} />
-      <Route3DContent path3D={path3D} locations={locations} />
-    </Canvas>
-  );
+  return <Route3DContent path3D={path3D} locations={locations} />;
 };
 
 export default Route3D;
