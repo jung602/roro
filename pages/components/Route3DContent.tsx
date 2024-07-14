@@ -13,7 +13,7 @@ const easeInOut = (t: number): number => {
   }
   
   const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
-    const { camera, scene } = useThree();
+    const { camera, scene, size } = useThree();
     const lineRef = useRef<any>(null);
     const controlsRef = useRef<any>(null);
     const spheresRef = useRef<THREE.Mesh[]>([]);
@@ -24,24 +24,33 @@ const easeInOut = (t: number): number => {
     const baseLineWidth = 30;
     const baseSphereRadius = 0.7;
     const baseDistance = 100;
-    const animationDuration = 1.5; // 애니메이션 지속 시간 (초)
+    const animationDuration = 1.5;
 
-  useEffect(() => {
+  const adjustCamera = () => {
     if (path3D.length > 0) {
       const box = new THREE.Box3().setFromPoints(path3D);
       const center = box.getCenter(new THREE.Vector3());
-      const size = box.getSize(new THREE.Vector3());
+      const boxSize = box.getSize(new THREE.Vector3());
 
-      const maxSize = Math.max(size.x, size.z);
-      const distance = maxSize * 1.5;
+      const maxSize = Math.max(boxSize.x, boxSize.y, boxSize.z);
+      const aspect = size.width / size.height;
 
-      camera.position.set(center.x, distance, center.z);
+      let distance;
+      if (camera instanceof THREE.PerspectiveCamera) {
+        const fov = camera.fov * (Math.PI / 180);
+        distance = Math.max(
+          maxSize / (2 * Math.tan(fov / 2)),
+          maxSize / (2 * aspect * Math.tan(fov / 2))
+        );
+        // Add some padding
+        distance *= 1.2;
+      } else {
+        distance = maxSize * 1.2;
+      }
+
+      camera.position.set(center.x, distance, center.z + distance / 2);
       camera.lookAt(center);
       camera.up.set(0, 0, -1);
-
-      if (camera instanceof THREE.PerspectiveCamera) {
-        camera.fov = 2 * Math.atan((maxSize / 2) / distance) * (180 / Math.PI);
-      }
 
       camera.updateProjectionMatrix();
 
@@ -50,7 +59,11 @@ const easeInOut = (t: number): number => {
         controlsRef.current.update();
       }
     }
-  }, [path3D, camera, scene]);
+  };
+
+  useEffect(() => {
+    adjustCamera();
+  }, [path3D, camera, scene, size]);
 
   const locationPoints = useMemo(() => {
     if (path3D.length >= 2 && locations.length >= 2) {
@@ -72,7 +85,6 @@ const easeInOut = (t: number): number => {
         }
       });
 
-      // 애니메이션 진행
       if (!isAnimationComplete) {
         setAnimationProgress(prev => {
           const newProgress = prev + delta / animationDuration;
@@ -129,7 +141,6 @@ const easeInOut = (t: number): number => {
   );
 };
 
-
 const Route3DContent: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
   const [isClient, setIsClient] = useState(false);
 
@@ -143,7 +154,7 @@ const Route3DContent: React.FC<Route3DContentProps> = ({ path3D, locations }) =>
     <div className="w-full h-full p-0">
         <Canvas
         className="w-full h-full block"
-        camera={{ fov: 75, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -3] }}
+        camera={{ fov: 60, near: 0.1, far: 1000, position: [0, 100, 0], up: [0, 0, -3] }}
         >
         <ambientLight intensity={5} />
         <Scene path3D={path3D} locations={locations} />
