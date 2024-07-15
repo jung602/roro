@@ -48,7 +48,7 @@ const CircleMarker3D: React.FC<CircleMarker3DProps> = ({ position, number }) => 
     <sprite
       ref={spriteRef}
       position={position}
-      scale={[.03, .03, 1]}
+      scale={[.05, .05, 1]}
       material={spriteMaterial}
       renderOrder={1000}  // 여기에 직접 renderOrder를 추가
     />

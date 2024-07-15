@@ -72,7 +72,7 @@ const MapPage: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[100dvh] bg-yellow-400 text-white">
-      <div className="flex-1 p-4 relative">
+      <div className="flex-1 relative">
         <div className="absolute inset-0 dot-grid"></div>
         <div className="h-full relative z-10">
           <DynamicRoute3D path3D={path3D} locations={locationList} />
