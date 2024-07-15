@@ -77,7 +77,7 @@ const SearchPage: React.FC = () => {
   const handleSearch = () => {
     if (locations.length >= 2) {
       router.push({
-        pathname: '/map',
+        pathname: '/routeConfirmation',
         query: { locations: JSON.stringify(locations) },
       });
     } else {
