@@ -7,8 +7,11 @@ import CircleMarker3D from './CircleMarker3D';
 interface Route3DContentProps {
   path3D: THREE.Vector3[];
   locations: {
-    lat: number; lng: number; name: string, address: string
-}[];
+    name: string;
+    address: string;
+    lat?: number;  // lat를 선택적으로 만듭니다
+    lng?: number;  // lng를 선택적으로 만듭니다
+  }[];
 }
 
 const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
