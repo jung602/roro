@@ -24,7 +24,7 @@ const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
   const [animationProgress, setAnimationProgress] = useState(0);
   const [isAnimationComplete, setIsAnimationComplete] = useState(false);
 
-  const animationDuration = 2; // seconds
+  const animationDuration = 1.5; // seconds
 
   const adjustCamera = () => {
     if (path3D.length > 0) {

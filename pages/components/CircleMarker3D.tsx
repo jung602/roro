@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useEffect } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
 
@@ -11,7 +11,7 @@ const CircleMarker3D: React.FC<CircleMarker3DProps> = ({ position, number }) => 
   const spriteRef = useRef<THREE.Sprite>(null);
 
   const spriteMaterial = useMemo(() => {
-    if (typeof window === 'undefined') return null;  // 서버 사이드에서는 null 반환
+    if (typeof window === 'undefined') return null;
 
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -40,11 +40,20 @@ const CircleMarker3D: React.FC<CircleMarker3DProps> = ({ position, number }) => 
     });
   }, [number]);
 
-  useFrame(({ camera }) => {
+  useEffect(() => {
     if (spriteRef.current) {
-      spriteRef.current.lookAt(camera.position);
+      spriteRef.current.lookAt(new THREE.Vector3(0, 0, 1));
     }
-  });
+  }, []);
+
+  // useFrame 훅을 조건부로 사용
+  if (typeof window !== 'undefined') {
+    useFrame(({ camera }) => {
+      if (spriteRef.current) {
+        spriteRef.current.lookAt(camera.position);
+      }
+    });
+  }
 
   if (!spriteMaterial) return null;
 
