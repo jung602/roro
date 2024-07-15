@@ -7,6 +7,8 @@ interface CircleMarkerProps {
 }
 
 const CircleMarker: React.FC<CircleMarkerProps> = ({ position, number }) => {
+  if (typeof window === 'undefined') return null;  // 서버 사이드에서는 null 반환
+
   return (
     <OverlayView
       position={position}

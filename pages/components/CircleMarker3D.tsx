@@ -11,6 +11,8 @@ const CircleMarker3D: React.FC<CircleMarker3DProps> = ({ position, number }) => 
   const spriteRef = useRef<THREE.Sprite>(null);
 
   const spriteMaterial = useMemo(() => {
+    if (typeof window === 'undefined') return null;  // 서버 사이드에서는 null 반환
+
     const canvas = document.createElement('canvas');
     canvas.width = 128;
     canvas.height = 128;
@@ -44,13 +46,15 @@ const CircleMarker3D: React.FC<CircleMarker3DProps> = ({ position, number }) => 
     }
   });
 
+  if (!spriteMaterial) return null;
+
   return (
     <sprite
       ref={spriteRef}
       position={position}
       scale={[.05, .05, 1]}
       material={spriteMaterial}
-      renderOrder={1000}  // 여기에 직접 renderOrder를 추가
+      renderOrder={1000}
     />
   );
 };

@@ -2,7 +2,9 @@ import React, { useRef, useEffect, useMemo, useState } from 'react';
 import { Canvas, useThree, useFrame } from '@react-three/fiber';
 import { OrbitControls, Line } from '@react-three/drei';
 import * as THREE from 'three';
-import CircleMarker3D from './CircleMarker3D';
+import dynamic from 'next/dynamic';
+
+const DynamicCircleMarker3D = dynamic(() => import('./DynamicCircleMarker3D'), { ssr: false });
 
 interface Route3DContentProps {
   path3D: THREE.Vector3[];
@@ -103,7 +105,7 @@ const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
     console.log("locations length:", locations.length);
     console.log("locationPoints:", locationPoints);
   }, [path3D, locations, locationPoints]);
-  
+
   return (
     <>
       {animatedPath.length >= 2 && (
@@ -115,7 +117,7 @@ const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
         />
       )}
       {locationPoints.map((point, index) => (
-        <CircleMarker3D
+        <DynamicCircleMarker3D
           key={index}
           position={point}
           number={index + 1}

@@ -2,7 +2,10 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { GoogleMap, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api';
 import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
-import CircleMarker from './CircleMarker';
+
+import dynamic from 'next/dynamic';
+const DynamicCircleMarker = dynamic(() => import('./DynamicCircleMarker'), { ssr: false });
+
 
 interface Location {
   name: string;
@@ -163,7 +166,7 @@ const RouteConfirmationPage: React.FC = () => {
             />
           )}
           {routeMarkers.map((position, index) => (
-            <CircleMarker
+            <DynamicCircleMarker
               key={index}
               position={position}
               number={index + 1}
