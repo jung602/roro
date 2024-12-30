@@ -22,13 +22,10 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-xl shadow-lg">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-900 m-4">
+      <div className="w-full max-w-md p-8 space-y-8 bg-stone-800 rounded">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900">로그인</h1>
-          <p className="mt-2 text-gray-600">
-            RORO에 오신 것을 환영합니다
-          </p>
+          <h1 className="text-xl font-light text-stone-100">Start your road</h1>
         </div>
         
         <div className="mt-8 space-y-6">

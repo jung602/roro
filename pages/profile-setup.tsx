@@ -79,15 +79,15 @@ export default function ProfileSetup() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-stone-900"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 p-4">
-      <div className="w-full max-w-md p-8 bg-white rounded-xl shadow-lg">
-        <h1 className="text-2xl font-bold text-center mb-8">프로필 설정</h1>
+    <div className="min-h-screen flex flex-col items-center justify-center bg-stone-900 p-4">
+      <div className="w-full max-w-md p-8 bg-white rounded">
+        <h1 className="text-xl font-medium text-center mb-8">Set your profile</h1>
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="flex flex-col items-center space-y-4">
@@ -100,8 +100,8 @@ export default function ProfileSetup() {
                   className="rounded-full object-cover"
                 />
               ) : (
-                <div className="w-full h-full rounded-full bg-gray-200 flex items-center justify-center">
-                  <span className="text-gray-400">No Image</span>
+                <div className="w-full h-full rounded-full bg-stone-200 flex items-center justify-center">
+                  <span className="text-stone-400">No Image</span>
                 </div>
               )}
             </div>
@@ -115,22 +115,22 @@ export default function ProfileSetup() {
             />
             <label
               htmlFor="profile-image"
-              className="cursor-pointer py-2 px-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="cursor-pointer py-2 px-4 bg-stone-100 rounded-lg hover:bg-stone-200 transition-colors"
             >
-              프로필 이미지 변경
+              Upload Image
             </label>
           </div>
 
           <div>
-            <label htmlFor="nickname" className="block text-sm font-medium text-gray-700 mb-1">
-              닉네임
+            <label htmlFor="nickname" className="block text-sm font-medium text-stone-700 mb-1">
+              Name
             </label>
             <input
               type="text"
               id="nickname"
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder={user?.displayName || '닉네임을 입력하세요'}
             />
           </div>
@@ -138,7 +138,7 @@ export default function ProfileSetup() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-2 px-4 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="w-full py-2 px-4 bg-stone-900 text-white rounded-lg hover:bg-stone-600 disabled:bg-stone-400 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? '저장 중...' : '저장'}
           </button>

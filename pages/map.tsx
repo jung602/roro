@@ -7,6 +7,8 @@ import { saveRoute } from '../src/services/routeService';
 import BackButton from '../src/components/common/BackButton';
 import { googleMapsConfig } from '@/utils/googleMapsConfig';
 import { useAuth } from '@/contexts/AuthContext';
+import Image from 'next/image';
+import { User } from 'lucide-react';
 
 const DynamicRoute3D = dynamic(() => import('../src/components/route/Route3D'), {
   ssr: false,
@@ -188,26 +190,70 @@ export default function Map() {
         </div>
       </div>
       <div className="bg-stone-100 text-stone-900 p-4 rounded">
-        <h3 className="text-xl font-semibold mb-2">Road</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <p className="text-sm text-stone-500">Places</p>
-            <p className="text-lg font-semibold">{locationList.length}</p>
-          </div>
-          <div>
-            <p className="text-sm text-stone-500">By Walk</p>
-            <p className="text-lg font-semibold">
-              {directions && Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60)}:
-              {directions && String(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) % 60).padStart(2, '0')}
-            </p>
-          </div>
-          <div>
-            <p className="text-sm text-stone-500">Long</p>
-            <p className="text-lg font-semibold">
-              {directions && (directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000).toFixed(1)} km
-            </p>
-          </div>
-        </div>
+        {fromFeed ? (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-semibold">{router.query.title || ''}</h3>
+              <div className="flex items-center gap-2">
+                <div className="relative w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center overflow-hidden">
+                  {router.query.userProfileImage ? (
+                    <Image
+                      src={router.query.userProfileImage as string}
+                      alt={router.query.userNickname as string || '사용자'}
+                      width={32}
+                      height={32}
+                      className="rounded-full object-cover"
+                    />
+                  ) : (
+                    <User size={20} className="text-stone-400" />
+                  )}
+                </div>
+                <span className="text-sm text-stone-600">{router.query.userNickname || '사용자'}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-stone-500">Places</p>
+                <p className="text-lg font-semibold">{locationList.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">By Walk</p>
+                <p className="text-lg font-semibold">
+                  {directions && Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60)}:
+                  {directions && String(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) % 60).padStart(2, '0')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Long</p>
+                <p className="text-lg font-semibold">
+                  {directions && (directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000).toFixed(1)} km
+                </p>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-stone-500">Places</p>
+                <p className="text-lg font-semibold">{locationList.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">By Walk</p>
+                <p className="text-lg font-semibold">
+                  {directions && Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60)}:
+                  {directions && String(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) % 60).padStart(2, '0')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Long</p>
+                <p className="text-lg font-semibold">
+                  {directions && (directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000).toFixed(1)} km
+                </p>
+              </div>
+            </div>
+          </>
+        )}
         <div className="mt-4 flex justify-between items-center">
           <div className="flex space-x-2">
             {locationList.map((_, index) => (

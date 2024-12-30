@@ -14,46 +14,44 @@ export default function NavigationBar() {
     }
   };
 
+  const getButtonStyles = (path: string) => {
+    const isActive = router.pathname === path;
+    return `flex flex-col items-center justify-center flex-1 min-w-[80px] py-3 transition-all duration-200 
+      ${isActive ? 'text-stone-200 scale-105' : 'text-stone-500 hover:text-stone-400'}
+      hover:scale-105`;
+  };
+
   return (
     <>
-      <div className="px-4 h-[4.5rem] flex gap-4 items-center justify-around">
+      <div className="w-full mx-auto p-4 flex items-center justify-between">
         <button
           onClick={() => router.push('/')}
-          className="flex flex-col items-center space-y-1 w-16 py-2"
+          className={getButtonStyles('/')}
         >
           <Home
-            size={24}
-            className={router.pathname === '/' ? 'text-stone-200' : 'text-stone-500'}
+            size={24} strokeWidth={1}
+            className="transition-transform duration-200"
           />
-          <span className={`text-xs ${router.pathname === '/' ? 'text-stone-200' : 'text-stone-500'}`}>
-            홈
-          </span>
         </button>
 
         <button
           onClick={() => router.push('/search')}
-          className="flex flex-col items-center space-y-1 w-16 py-2"
+          className={getButtonStyles('/search')}
         >
           <Plus
-            size={24}
-            className={router.pathname === '/search' ? 'text-stone-200' : 'text-stone-500'}
+            size={24} strokeWidth={1}
+            className="transition-transform duration-200"
           />
-          <span className={`text-xs ${router.pathname === '/search' ? 'text-stone-200' : 'text-stone-500'}`}>
-            만들기
-          </span>
         </button>
 
         <button
           onClick={handleMyPageClick}
-          className="flex flex-col items-center space-y-1 w-16 py-2"
+          className={getButtonStyles('/mypage')}
         >
           <User
-            size={24}
-            className={router.pathname === '/mypage' ? 'text-stone-200' : 'text-stone-500'}
+            size={24} strokeWidth={1}
+            className="transition-transform duration-200"
           />
-          <span className={`text-xs ${router.pathname === '/mypage' ? 'text-stone-200' : 'text-stone-500'}`}>
-            마이
-          </span>
         </button>
       </div>
       <div className="h-[env(safe-area-inset-bottom)]" />

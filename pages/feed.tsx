@@ -38,7 +38,10 @@ const FeedPage: React.FC = () => {
           lat: point.lat,
           lng: point.lng,
         }))),
-        fromFeed: 'true'
+        fromFeed: 'true',
+        title: route.title,
+        userNickname: route.userNickname,
+        userProfileImage: route.userProfileImage
       },
     });
   };
@@ -75,7 +78,7 @@ const FeedPage: React.FC = () => {
   return (
     <div className="bg-stone-900 text-center text-stone-100 p-4">
       <h1 className="text-xl font-semibold mt-12 mb-8">We Walk.</h1>
-      <div className="max-w-[1440px] mx-auto grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-left">
+      <div className="max-w-screen-2xl mx-auto grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-left">
         {routes.map((route) => {
           console.log('Route points for', route.title, ':', route.points);
           return (
@@ -95,7 +98,7 @@ const FeedPage: React.FC = () => {
                   <span className="text-sm text-stone-300">{route.userNickname || '익명'}</span>
                 </div>
                 <div className="flex justify-between align-center">
-                  <div className="text-base text-stone-100 font-semibold">{route.title} Road</div>
+                  <div className="text-base text-stone-100 font-semibold">{route.title}</div>
                   <div className="text-xs text-stone-600 font-medium">
                     {new Date(route.created).toLocaleDateString()}
                   </div>

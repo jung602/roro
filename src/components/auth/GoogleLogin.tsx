@@ -29,9 +29,10 @@ export default function GoogleLogin() {
   };
 
   return (
+    <div className="bg-stone-50 rounded transition-all">
     <button
       onClick={handleGoogleLogin}
-      className="flex items-center justify-center gap-2 w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+      className="flex items-center justify-center gap-2 w-full px-4 py-2"
     >
       <Image
         src={`${process.env.NODE_ENV === 'production' ? '/roro' : ''}/googleLogo.webp`}
@@ -39,7 +40,8 @@ export default function GoogleLogin() {
         width={20}
         height={20}
       />
-      Google로 계속하기
+      Sign in with Google
     </button>
+    </div>
   );
 } 
