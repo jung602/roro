@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
+import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
 import { compressImage } from '@/utils/imageCompression';
 import Image from 'next/image';
@@ -101,11 +101,44 @@ export default function ProfileEdit() {
 
       if (profileImage) {
         try {
-          profileImageUrl = await uploadImage(profileImage);
+          // 이전 프로필 이미지 URL에서 파일 경로 추출
+          const userDoc = await getDoc(doc(db, 'users', user.uid));
+          const userData = userDoc.data();
+          const previousImageUrl = userData?.profileImageUrl;
+
+          if (previousImageUrl) {
+            try {
+              // Firebase Storage URL에서 파일 경로 추출
+              const previousImageRef = ref(storage, previousImageUrl);
+              // 이전 이미지 삭제
+              await deleteObject(previousImageRef);
+            } catch (deleteError) {
+              console.error('이전 프로필 이미지 삭제 실패:', deleteError);
+              // 삭제 실패해도 새 이미지 업로드는 계속 진행
+            }
+          }
+
+          // 새 이미지 업로드
+          const timestamp = Date.now();
+          const fileExtension = profileImage.type.split('/')[1] || 'jpg';
+          const fileName = `${user.uid}_${timestamp}.${fileExtension}`;
+          const storageRef = ref(storage, `profile-images/${user.uid}/${fileName}`);
+          
+          // 파일을 Base64로 변환
+          const base64Data = await convertToBase64(profileImage);
+          const base64String = base64Data.split(',')[1];  // 'data:image/jpeg;base64,' 부분 제거
+          
+          // Base64 문자열로 업로드
+          await uploadString(storageRef, base64String, 'base64', {
+            contentType: profileImage.type,
+            cacheControl: 'public,max-age=7200'
+          });
+          
+          // 다운로드 URL 획득
+          profileImageUrl = await getDownloadURL(storageRef);
         } catch (error) {
           console.error('이미지 업로드 실패:', error);
-          alert('이미지 업로드에 실패했습니다. 다시 시도해주세요.');
-          return;
+          throw new Error('이미지 업로드에 실패했습니다.');
         }
       }
 
