@@ -34,7 +34,7 @@ export default function GoogleLogin() {
       className="flex items-center justify-center gap-2 w-full px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
     >
       <Image
-        src="/googleLogo.webp"
+        src={`${process.env.NODE_ENV === 'production' ? '/roro' : ''}/googleLogo.webp`}
         alt="Google Logo"
         width={20}
         height={20}
