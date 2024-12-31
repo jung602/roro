@@ -18,6 +18,7 @@ import {
 import dynamic from 'next/dynamic';
 import BackButton from '@/components/common/BackButton';
 import SortableItem from '@/components/common/SortableItem';
+import { uploadPlaceImages } from '@/services/imageService';
 
 const DynamicCircleMarker = dynamic(() => import('@/components/map/CircleMarker'), { ssr: false });
 
@@ -26,6 +27,7 @@ interface Location {
   address: string;
   lat: number;
   lng: number;
+  images?: { url: string; path: string; }[];
 }
 
 export default function RouteConfirmation() {
@@ -175,6 +177,27 @@ export default function RouteConfirmation() {
     }
   }, [updateDirections]);
 
+  const handleImagesUpload = async (index: number, files: FileList) => {
+    try {
+      const location = locations[index];
+      if (!location) return;
+
+      const uploadedImages = await uploadPlaceImages(`place-${location.name}-${index}`, Array.from(files));
+      
+      setLocations(prev => {
+        const newLocations = [...prev];
+        newLocations[index] = {
+          ...newLocations[index],
+          images: uploadedImages
+        };
+        return newLocations;
+      });
+    } catch (error) {
+      console.error('Failed to upload images:', error);
+      alert('이미지 업로드에 실패했습니다.');
+    }
+  };
+
   const handleConfirm = () => {
     router.push({
       pathname: '/map',
@@ -236,6 +259,8 @@ export default function RouteConfirmation() {
                   id={location.name}
                   index={index}
                   name={location.name}
+                  images={location.images}
+                  onImagesUpload={handleImagesUpload}
                 />
               ))}
             </ul>

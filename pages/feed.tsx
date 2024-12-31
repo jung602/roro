@@ -77,19 +77,32 @@ const FeedPage: React.FC = () => {
   }, [fetchRoutes]);
 
   const handleRouteClick = (route: SavedRoute) => {
+    console.log('Route being passed:', route);
+    console.log('Points with images:', route.points.map(point => ({
+      name: point.name,
+      images: point.images
+    })));
+
+    const locations = route.points.map(point => ({
+      name: point.name || '',
+      address: `${point.lat},${point.lng}`,
+      lat: point.lat,
+      lng: point.lng,
+      images: point.images
+    }));
+
+    console.log('Formatted locations:', locations);
+
     router.push({
       pathname: '/map',
       query: { 
-        locations: JSON.stringify(route.points.map(point => ({
-          name: point.name || '',
-          address: `${point.lat},${point.lng}`,
-          lat: point.lat,
-          lng: point.lng,
-        }))),
+        locations: JSON.stringify(locations),
         fromFeed: 'true',
         title: route.title,
         userNickname: route.userNickname,
-        userProfileImage: route.userProfileImage
+        userProfileImage: route.userProfileImage,
+        userId: route.userId,
+        routeId: route.id
       },
     });
   };

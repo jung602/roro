@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, serverTimestamp, Timestamp, where, limit } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, serverTimestamp, Timestamp, where, limit, updateDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Route, SavedRoute } from '../types/map';
 
@@ -51,6 +51,7 @@ const serializeRoute = async (route: Route, userId: string) => {
       lat: Number(point.lat),
       lng: Number(point.lng),
       order: index,
+      images: point.images || [],
     })),
     duration: duration || 0,
     distance: distance || 0,
@@ -119,6 +120,7 @@ export const getRoutes = async (pageSize: number = 10): Promise<SavedRoute[]> =>
             name: point.name,
             lat: Number(point.lat),
             lng: Number(point.lng),
+            images: point.images || [],
           })),
         duration: Number(data.duration),
         distance: Number(data.distance),
@@ -151,6 +153,7 @@ export const getRouteById = async (id: string): Promise<SavedRoute | null> => {
     
     if (docSnap.exists()) {
       const data = docSnap.data();
+      console.log('Raw route data from Firestore:', data);
       const userData = data.userId ? await getUserData(data.userId) : null;
       
       const route = {
@@ -163,6 +166,7 @@ export const getRouteById = async (id: string): Promise<SavedRoute | null> => {
             name: point.name,
             lat: Number(point.lat),
             lng: Number(point.lng),
+            images: point.images || [],
           })),
         duration: Number(data.duration),
         distance: Number(data.distance),
@@ -173,12 +177,54 @@ export const getRouteById = async (id: string): Promise<SavedRoute | null> => {
         userProfileImage: userData?.profileImageUrl || null,
       } as SavedRoute;
 
+      console.log('Processed route with images:', route);
       setCache(cacheKey, route);
       return route;
     }
     return null;
   } catch (error) {
     console.error('Firestore 단일 경로 조회 에러:', error);
+    throw error;
+  }
+};
+
+export const updateRoute = async (route: Route, userId: string): Promise<void> => {
+  try {
+    const routeRef = doc(db, ROUTES_COLLECTION, route.id);
+    const routeDoc = await getDoc(routeRef);
+    
+    if (!routeDoc.exists()) {
+      throw new Error('Route not found');
+    }
+
+    const data = routeDoc.data();
+    if (data.userId !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    const routeData = {
+      points: route.points.map((point, index) => ({
+        id: point.id || `point-${index}`,
+        name: point.name || `위치 ${index + 1}`,
+        lat: Number(point.lat),
+        lng: Number(point.lng),
+        order: index,
+        images: point.images || [],
+      })),
+      updated: serverTimestamp(),
+    };
+
+    await updateDoc(routeRef, routeData);
+    
+    // 캐시 무효화
+    const cacheKeys = Array.from(cache.keys());
+    cacheKeys.forEach(key => {
+      if (key.includes('routes_') || key === `route_${route.id}`) {
+        cache.delete(key);
+      }
+    });
+  } catch (error) {
+    console.error('Route update error:', error);
     throw error;
   }
 }; 

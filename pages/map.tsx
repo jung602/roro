@@ -3,12 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { GoogleMap, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api';
 import * as THREE from 'three';
-import { saveRoute } from '../src/services/routeService';
+import { saveRoute, updateRoute } from '../src/services/routeService';
+import { uploadPlaceImages, deletePlaceImage } from '../src/services/imageService';
 import BackButton from '../src/components/common/BackButton';
 import { googleMapsConfig } from '@/utils/googleMapsConfig';
 import { useAuth } from '@/contexts/AuthContext';
-import Image from 'next/image';
-import { User } from 'lucide-react';
+import LocationGallery from '@/components/route/LocationGallery';
+import EditableLocationGallery from '@/components/route/EditableLocationGallery';
+import RouteInfo from '@/components/route/RouteInfo';
 
 const DynamicRoute3D = dynamic(() => import('../src/components/route/Route3D'), {
   ssr: false,
@@ -28,10 +30,19 @@ const convertToLocalCoord = (lat: number, lng: number, centerLat: number, center
 export default function Map() {
   const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [path3D, setPath3D] = useState<THREE.Vector3[]>([]);
-  const [locationList, setLocationList] = useState<{name: string, address: string, lat?: number, lng?: number}[]>([]);
+  const [locationList, setLocationList] = useState<{
+    name: string;
+    address: string;
+    lat?: number;
+    lng?: number;
+    images?: { url: string; path: string; }[];
+  }[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [routeTitle, setRouteTitle] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedLocations, setEditedLocations] = useState(locationList);
+
   const router = useRouter();
   const { locations, fromFeed } = router.query;
   const { user } = useAuth();
@@ -41,12 +52,22 @@ export default function Map() {
   useEffect(() => {
     if (typeof window !== 'undefined' && locations) {
       try {
-        const parsedLocations = JSON.parse(locations as string) as {name: string, address: string, lat?: number, lng?: number}[];
-        console.log('파싱된 위치 데이터:', parsedLocations);
+        const parsedLocations = JSON.parse(locations as string) as {
+          name: string,
+          address: string,
+          lat?: number,
+          lng?: number,
+          images?: { url: string; path: string; }[]
+        }[];
+        console.log('Received locations string:', locations);
+        console.log('Parsed locations:', parsedLocations);
+        console.log('Locations with images:', parsedLocations.filter(loc => loc.images && loc.images.length > 0));
         setLocationList(parsedLocations);
+        setEditedLocations(parsedLocations);
       } catch (error) {
         console.error("Failed to parse locations:", error);
         setLocationList([]);
+        setEditedLocations([]);
       }
     }
   }, [locations]);
@@ -146,6 +167,7 @@ export default function Map() {
           name: location.name,
           lat,
           lng,
+          images: location.images
         };
       });
 
@@ -161,6 +183,7 @@ export default function Map() {
           name: string;
           lat: number;
           lng: number;
+          images?: { url: string; path: string; }[];
         }[],
         created: new Date(),
         updated: new Date(),
@@ -184,128 +207,169 @@ export default function Map() {
     }
   };
 
-  return (
-    <div className="flex flex-col h-[100dvh] bg-stone-900 text-stone-100">
-      <div className='fixed z-[1000] m-4'><BackButton /></div>
-      <div className="flex-1 relative min-h-0">
-        <div className="absolute inset-0 dot-grid"></div>
-        <div className="absolute inset-0">
-          <DynamicRoute3D path3D={path3D} locations={locationList} />
-        </div>
-      </div>
-      <div className="bg-stone-100 text-stone-900 p-4 rounded">
-        {fromFeed ? (
-          <>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-semibold">{router.query.title || ''}</h3>
-              <div className="flex items-center gap-2">
-                <div className="relative w-8 h-8 rounded-full bg-stone-200 flex items-center justify-center overflow-hidden">
-                  {router.query.userProfileImage ? (
-                    <Image
-                      src={router.query.userProfileImage as string}
-                      alt={router.query.userNickname as string || '사용자'}
-                      width={32}
-                      height={32}
-                      className="rounded-full object-cover"
-                    />
-                  ) : (
-                    <User size={20} className="text-stone-400" />
-                  )}
-                </div>
-                <span className="text-sm text-stone-600">{router.query.userNickname || '사용자'}</span>
-              </div>
-            </div>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-stone-500">Places</p>
-                <p className="text-lg font-semibold">{locationList.length}</p>
-              </div>
-              <div>
-                <p className="text-sm text-stone-500">By Walk</p>
-                <p className="text-lg font-semibold">
-                  {directions && Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60)}:
-                  {directions && String(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) % 60).padStart(2, '0')}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-stone-500">Long</p>
-                <p className="text-lg font-semibold">
-                  {directions && (directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000).toFixed(1)} km
-                </p>
-              </div>
-            </div>
-          </>
-        ) : (
-          <>
-            <div className="grid grid-cols-3 gap-4">
-              <div>
-                <p className="text-sm text-stone-500">Places</p>
-                <p className="text-lg font-semibold">{locationList.length}</p>
-              </div>
-              <div>
-                <p className="text-sm text-stone-500">By Walk</p>
-                <p className="text-lg font-semibold">
-                  {directions && Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60)}:
-                  {directions && String(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) % 60).padStart(2, '0')}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-stone-500">Long</p>
-                <p className="text-lg font-semibold">
-                  {directions && (directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000).toFixed(1)} km
-                </p>
-              </div>
-            </div>
-          </>
-        )}
-        <div className="mt-4 flex justify-between items-center">
-          <div className="flex space-x-2">
-            {locationList.map((_, index) => (
-              <div key={index} className="w-6 h-6 rounded-full bg-stone-200 flex items-center justify-center">
-                <span className="text-xs text-stone-900">{index + 1}</span>
-              </div>
-            ))}
-          </div>
-          {!fromFeed && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="bg-stone-200 text-stone-900 px-4 py-2 rounded-full hover:bg-stone-300 transition-colors"
-            >
-              Save Route
-            </button>
-          )}
-        </div>
-      </div>
+  const handleAddImages = async (locationIndex: number, files: FileList) => {
+    const location = editedLocations[locationIndex];
+    try {
+      const currentImages = location.images || [];
+      if (currentImages.length + files.length > 5) {
+        alert('이미지는 최대 5개까지만 업로드할 수 있습니다.');
+        return;
+      }
 
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-stone-900 bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-stone-100 rounded-lg p-6 w-full max-w-md">
-            <h3 className="text-xl font-semibold mb-4 text-stone-900">Save Your Route</h3>
-            <input
-              type="text"
-              value={routeTitle}
-              onChange={(e) => setRouteTitle(e.target.value)}
-              placeholder="Enter route title"
-              className="w-full px-4 py-2 border rounded mb-4 text-stone-900 bg-stone-50"
-            />
-            <div className="flex justify-end space-x-2">
+      const uploadedImages = await uploadPlaceImages(`place-${location.name}-${locationIndex}`, Array.from(files));
+      
+      const newLocations = [...editedLocations];
+      newLocations[locationIndex] = {
+        ...location,
+        images: [...currentImages, ...uploadedImages]
+      };
+      setEditedLocations(newLocations);
+    } catch (error) {
+      console.error('이미지 업로드 실패:', error);
+      alert('이미지 업로드에 실패했습니다.');
+    }
+  };
+
+  const handleDeleteImage = async (locationIndex: number, imageIndex: number) => {
+    const location = editedLocations[locationIndex];
+    if (!location.images) return;
+
+    try {
+      await deletePlaceImage(location.images[imageIndex].path);
+
+      const newLocations = [...editedLocations];
+      newLocations[locationIndex] = {
+        ...location,
+        images: location.images.filter((_, idx) => idx !== imageIndex)
+      };
+      setEditedLocations(newLocations);
+    } catch (error) {
+      console.error('이미지 삭제 실패:', error);
+      alert('이미지 삭제에 실패했습니다.');
+    }
+  };
+
+  const handleSaveChanges = async () => {
+    if (!user) return;
+    
+    try {
+      const route = {
+        id: router.query.routeId as string,
+        title: router.query.title as string,
+        points: editedLocations.map((location, index) => ({
+          id: `point-${index}`,
+          name: location.name,
+          lat: location.lat!,
+          lng: location.lng!,
+          images: location.images
+        })),
+        created: new Date(),
+        updated: new Date(),
+        duration: directions ? Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60) : 0,
+        distance: directions ? directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000 : 0,
+      };
+
+      await updateRoute(route, user.uid);
+      setIsEditing(false);
+      setLocationList(editedLocations);
+      alert('변경사항이 저장되었습니다.');
+    } catch (error) {
+      console.error('변경사항 저장 실패:', error);
+      alert('변경사항 저장에 실패했습니다.');
+    }
+  };
+
+  const toggleEditMode = () => {
+    if (isEditing) {
+      setLocationList(editedLocations);
+    } else {
+      setEditedLocations(locationList);
+    }
+    setIsEditing(!isEditing);
+  };
+
+  if (loadError) return <div>Error loading maps</div>;
+  if (!isLoaded) return <div>Loading...</div>;
+
+  const canEdit: boolean = fromFeed === 'true' && !!user && user.uid === router.query.userId;
+  const totalDuration = directions?.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) || 0;
+  const totalDistance = directions?.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) || 0;
+
+  return (
+    <div className="flex flex-col">
+      <div className="h-[100dvh] flex flex-col bg-stone-100 text-stone-100">
+        <div className='fixed z-[1000] m-4'><BackButton /></div>
+        <div className="flex-1 relative min-h-0">
+          <div className="absolute inset-0 dot-grid"></div>
+          <div className="absolute inset-0">
+            <DynamicRoute3D path3D={path3D} locations={locationList} />
+          </div>
+        </div>
+        
+        {fromFeed ? (
+          <RouteInfo
+            title={router.query.title as string}
+            userNickname={router.query.userNickname as string}
+            userProfileImage={router.query.userProfileImage as string}
+            placesCount={locationList.length}
+            duration={Math.floor(totalDuration / 60)}
+            distance={totalDistance / 1000}
+            isEditing={isEditing}
+            canEdit={canEdit}
+            onEditClick={toggleEditMode}
+            onSaveClick={handleSaveChanges}
+            onCancelEdit={() => setIsEditing(false)}
+          />
+        ) : (
+          <div className="bg-stone-100 text-stone-900 p-4 rounded">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <p className="text-sm text-stone-500">Places</p>
+                <p className="text-lg font-semibold">{locationList.length}</p>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">By Walk</p>
+                <p className="text-lg font-semibold">
+                  {directions && Math.floor(totalDuration / 60)}:
+                  {directions && String(totalDuration % 60).padStart(2, '0')}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-stone-500">Long</p>
+                <p className="text-lg font-semibold">
+                  {directions && (totalDistance / 1000).toFixed(1)} km
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 flex justify-between items-center">
+              <div className="flex space-x-2">
+                {locationList.map((_, index) => (
+                  <div key={index} className="w-6 h-6 rounded-full bg-stone-200 flex items-center justify-center">
+                    <span className="text-xs text-stone-900">{index + 1}</span>
+                  </div>
+                ))}
+              </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="px-4 py-2 text-stone-600 hover:text-stone-900"
+                onClick={() => setIsModalOpen(true)}
+                className="bg-stone-200 text-stone-900 px-4 py-2 rounded-full hover:bg-stone-300 transition-colors"
               >
-                Cancel
-              </button>
-              <button
-                onClick={handleSaveRoute}
-                className={`px-4 py-2 bg-stone-200 text-stone-900 rounded hover:bg-stone-300 transition-colors ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isSaving}
-              >
-                {isSaving ? '저장 중...' : 'Save'}
+                Save Route
               </button>
             </div>
           </div>
-        </div>
+        )}
+      </div>
+      <div className='bg-stone-100'>
+      {isEditing ? (
+        <EditableLocationGallery
+          locations={editedLocations}
+          onAddImages={handleAddImages}
+          onDeleteImage={handleDeleteImage}
+        />
+      ) : (
+        <LocationGallery locations={locationList} />
       )}
+</div>
     </div>
   );
 }

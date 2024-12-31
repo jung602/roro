@@ -1,109 +1,58 @@
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
-import imageCompression from 'browser-image-compression';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { compressImage, ImageType } from '../utils/imageCompression';
 
-const MAX_FILE_SIZE_MB = 1;
-const QUALITY = 0.8;
-const MAX_WIDTH_PX = 1200;
-
-interface ImageDimensions {
-  width: number;
-  height: number;
+export interface PlaceImage {
+  url: string;
+  path: string;
 }
 
-const getImageDimensions = (file: File): Promise<ImageDimensions> => {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(img.src);
-      resolve({
-        width: img.width,
-        height: img.height
-      });
-    };
-    img.src = URL.createObjectURL(file);
-  });
-};
-
-const calculateNewDimensions = (originalDimensions: ImageDimensions): ImageDimensions => {
-  const { width, height } = originalDimensions;
-  if (width <= MAX_WIDTH_PX) {
-    return { width, height };
+export async function uploadPlaceImages(placeId: string, files: File[]): Promise<PlaceImage[]> {
+  if (files.length > 5) {
+    throw new Error('최대 5개의 이미지만 업로드할 수 있습니다.');
   }
 
-  const aspectRatio = width / height;
-  const newWidth = MAX_WIDTH_PX;
-  const newHeight = Math.round(newWidth / aspectRatio);
-
-  return { width: newWidth, height: newHeight };
-};
-
-export const uploadImage = async (
-  file: File,
-  path: string,
-  fileName: string
-): Promise<string> => {
-  try {
-    // 이미지 압축 옵션
-    const options = {
-      maxSizeMB: MAX_FILE_SIZE_MB,
-      maxWidthOrHeight: MAX_WIDTH_PX,
-      useWebWorker: true,
-      quality: QUALITY,
-    };
-
-    // 원본 이미지 크기 확인
-    const dimensions = await getImageDimensions(file);
-    const newDimensions = calculateNewDimensions(dimensions);
-
-    // 이미지 압축 필요 여부 확인
-    let compressedFile = file;
-    if (
-      file.size > MAX_FILE_SIZE_MB * 1024 * 1024 ||
-      dimensions.width > MAX_WIDTH_PX
-    ) {
-      compressedFile = await imageCompression(file, options);
-    }
-
-    // Storage 참조 생성
-    const storageRef = ref(storage, `${path}/${fileName}`);
-
-    // 메타데이터 설정
-    const metadata = {
-      contentType: compressedFile.type,
-      customMetadata: {
-        originalWidth: String(dimensions.width),
-        originalHeight: String(dimensions.height),
-        compressedWidth: String(newDimensions.width),
-        compressedHeight: String(newDimensions.height),
-      },
-    };
-
-    // 압축된 이미지 업로드
-    await uploadBytes(storageRef, compressedFile, metadata);
-
-    // 다운로드 URL 반환
-    return await getDownloadURL(storageRef);
-  } catch (error) {
-    console.error('이미지 업로드 에러:', error);
-    throw error;
-  }
-};
-
-export const getOptimizedImageUrl = (url: string, width?: number): string => {
-  if (!url) return '';
+  const images: PlaceImage[] = [];
   
-  // 이미 최적화된 URL인 경우 그대로 반환
-  if (url.includes('_thumb')) return url;
-
-  const targetWidth = width || MAX_WIDTH_PX;
-  
-  // Firebase Storage URL인 경우에만 처리
-  if (url.includes('firebasestorage.googleapis.com')) {
-    const urlObj = new URL(url);
-    urlObj.searchParams.set('width', targetWidth.toString());
-    return urlObj.toString();
+  for (const file of files) {
+    const compressedFile = await compressImage(file, 'place');
+    const timestamp = Date.now();
+    const path = `places/${placeId}/${timestamp}_${file.name}`;
+    const storageRef = ref(storage, path);
+    
+    await uploadBytes(storageRef, compressedFile);
+    const url = await getDownloadURL(storageRef);
+    
+    images.push({ url, path });
   }
+  
+  return images;
+}
 
+export async function uploadThumbnail(userId: string, file: File): Promise<PlaceImage> {
+  const compressedFile = await compressImage(file, 'thumbnail');
+  const timestamp = Date.now();
+  const path = `thumbnails/${userId}/${timestamp}_${file.name}`;
+  const storageRef = ref(storage, path);
+  
+  await uploadBytes(storageRef, compressedFile);
+  const url = await getDownloadURL(storageRef);
+  
+  return { url, path };
+}
+
+export async function deletePlaceImage(path: string): Promise<void> {
+  const storageRef = ref(storage, path);
+  await deleteObject(storageRef);
+}
+
+export async function uploadImage(file: File, folder: string, fileName: string): Promise<string> {
+  const compressedFile = await compressImage(file, 'profile');
+  const path = `${folder}/${fileName}`;
+  const storageRef = ref(storage, path);
+  
+  await uploadBytes(storageRef, compressedFile);
+  const url = await getDownloadURL(storageRef);
+  
   return url;
-}; 
+} 

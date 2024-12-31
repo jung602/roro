@@ -20,6 +20,7 @@ export interface Point {
   name: string;
   lat: number;
   lng: number;
+  images?: { url: string; path: string; }[];
 }
 
 export interface Route {
