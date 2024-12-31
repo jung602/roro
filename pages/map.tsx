@@ -31,6 +31,7 @@ export default function Map() {
   const [locationList, setLocationList] = useState<{name: string, address: string, lat?: number, lng?: number}[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [routeTitle, setRouteTitle] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
   const { locations, fromFeed } = router.query;
   const { user } = useAuth();
@@ -100,8 +101,8 @@ export default function Map() {
   }, [isLoaded, locationList, loadError]);
 
   const handleSaveRoute = async () => {
-    if (!directions || !routeTitle) {
-      console.log('directions 또는 routeTitle이 없음:', { directions, routeTitle });
+    if (!directions || !routeTitle || isSaving) {
+      console.log('저장 불가:', { directions, routeTitle, isSaving });
       return;
     }
 
@@ -112,6 +113,7 @@ export default function Map() {
     }
 
     console.log('저장할 경로 데이터:', { locationList, directions });
+    setIsSaving(true);
 
     try {
       const points = locationList.map((location, index) => {
@@ -177,12 +179,14 @@ export default function Map() {
     } catch (error) {
       console.error('Failed to save route:', error);
       alert('경로 저장에 실패했습니다.');
+    } finally {
+      setIsSaving(false);
     }
   };
 
   return (
     <div className="flex flex-col h-[100dvh] bg-stone-900 text-stone-100">
-      <div className='fixed m-1'><BackButton /></div>
+      <div className='fixed z-[1000] m-4'><BackButton /></div>
       <div className="flex-1 relative min-h-0">
         <div className="absolute inset-0 dot-grid"></div>
         <div className="absolute inset-0">
@@ -293,9 +297,10 @@ export default function Map() {
               </button>
               <button
                 onClick={handleSaveRoute}
-                className="px-4 py-2 bg-stone-200 text-stone-900 rounded hover:bg-stone-300 transition-colors"
+                className={`px-4 py-2 bg-stone-200 text-stone-900 rounded hover:bg-stone-300 transition-colors ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isSaving}
               >
-                Save
+                {isSaving ? '저장 중...' : 'Save'}
               </button>
             </div>
           </div>

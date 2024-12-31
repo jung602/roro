@@ -1,6 +1,5 @@
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
-import NavigationBar from '@/components/common/NavigationBar';
 
 const FeedPage = dynamic(() => import('./feed'), {
   ssr: false,

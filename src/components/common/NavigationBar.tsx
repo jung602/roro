@@ -16,7 +16,7 @@ export default function NavigationBar() {
 
   const getButtonStyles = (path: string) => {
     const isActive = router.pathname === path;
-    return `flex flex-col items-center justify-center flex-1 min-w-[80px] py-3 transition-all duration-200 
+    return `cursor-pointer flex flex-col items-center justify-center flex-1 w-auto py-3 transition-all duration-200 
       ${isActive ? 'text-stone-200 scale-105' : 'text-stone-500 hover:text-stone-400'}
       hover:scale-105`;
   };

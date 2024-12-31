@@ -238,9 +238,6 @@ export default function MyPage() {
           </div>
         )}
       </div>
-      <div className='flex justify-center bg-stone-800 border-t border-stone-700 z-50 fixed left-1/2 -translate-x-1/2 bottom-0 w-full'>
-        <NavigationBar />
-      </div>
     </div>
   );
 } 

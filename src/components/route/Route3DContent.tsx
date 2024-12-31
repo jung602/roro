@@ -40,23 +40,30 @@ const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
       const aspectRatio = size.width / size.height;
       const maxDimWidth = boxSize.x / aspectRatio;
       const maxDimHeight = boxSize.z;
-      const maxDim = Math.max(maxDimWidth, maxDimHeight) * 1.2; // 여유 공간을 위해 1.2 곱함
+      const maxDim = Math.max(maxDimWidth, maxDimHeight) * 1.2;
       
       if (camera instanceof THREE.PerspectiveCamera) {
         const fov = camera.fov * (Math.PI / 180);
         let cameraZ;
         
-        // 화면 높이가 너비보다 작은 경우 (가로가 긴 화면)
         if (size.height < size.width) {
           cameraZ = Math.abs(maxDim / Math.tan(fov / 2)) * 1.2;
         } else {
-          // 화면 높이가 너비보다 큰 경우 (세로가 긴 화면)
           cameraZ = Math.abs((maxDim * (size.height / size.width)) / Math.tan(fov / 2)) * 1.2;
         }
 
+        // 기본 거리 저장
+        const defaultDistance = cameraZ;
+        
         camera.position.set(centerRef.current.x, centerRef.current.y + cameraZ, centerRef.current.z);
         camera.lookAt(centerRef.current);
         camera.updateProjectionMatrix();
+
+        // OrbitControls에 대한 참조가 있을 경우 거리 제한 설정
+        if (controlsRef.current) {
+          controlsRef.current.minDistance = defaultDistance * 0.5;  // 80%
+          controlsRef.current.maxDistance = defaultDistance * 2;  // 120%
+        }
       }
 
       if (controlsRef.current) {
@@ -127,6 +134,7 @@ const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
           points={animatedPath}
           color="#f5f5f4"
           lineWidth={15}
+          frustumCulled={true}
         />
       )}
       {locationPoints.map((point, index) => (
@@ -139,11 +147,23 @@ const Scene: React.FC<Route3DContentProps> = ({ path3D, locations }) => {
       <OrbitControls 
         ref={controlsRef}
         enablePan={false}
-        enableZoom={false}
+        enableZoom={true}
         enableRotate={true}
-        rotateSpeed={0.5}
+        rotateSpeed={0.3}
         minPolarAngle={0}
         maxPolarAngle={Math.PI / 2}
+        enableDamping={true}
+        dampingFactor={1}
+        zoomSpeed={0.5}
+        mouseButtons={{
+          LEFT: THREE.MOUSE.ROTATE,
+          MIDDLE: THREE.MOUSE.DOLLY,
+          RIGHT: THREE.MOUSE.ROTATE
+        }}
+        touches={{
+          ONE: THREE.TOUCH.ROTATE,
+          TWO: THREE.TOUCH.DOLLY_PAN
+        }}
       />
     </>
   );
