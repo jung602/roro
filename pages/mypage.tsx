@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc, orderBy, Timestamp } from 'firebase/firestore';
 import { db, auth } from '@/lib/firebase';
 import Image from 'next/image';
 import NavigationBar from '@/components/common/NavigationBar';
@@ -11,16 +11,20 @@ import RouteThumbnail from '../src/components/route/RouteThumbnail';
 interface Route {
   id: string;
   title: string;
-  description: string;
+  points: Array<{
+    id: string;
+    name: string;
+    lat: number;
+    lng: number;
+    images?: { url: string; path: string; }[];
+  }>;
   userId: string;
   userNickname: string;
   userProfileImage: string;
   createdAt: string;
-  points: Array<{
-    lat: number;
-    lng: number;
-    name?: string;
-  }>;
+  duration: number;
+  distance: number;
+  path3D?: Array<{ x: number; y: number; z: number; }>;
 }
 
 interface UserData {
@@ -29,11 +33,10 @@ interface UserData {
 }
 
 export default function MyPage() {
-  const { user, loading } = useAuth();
+  const { user, userData, loading } = useAuth();
   const router = useRouter();
   const [routes, setRoutes] = useState<Route[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -43,45 +46,70 @@ export default function MyPage() {
 
   useEffect(() => {
     const fetchMyRoutes = async () => {
-      if (!user) return;
+      if (!user || !userData) return;
 
       try {
+        console.log('Fetching routes for user:', user.uid);
+        
         const routesQuery = query(
           collection(db, 'routes'),
           where('userId', '==', user.uid)
         );
         
-        const querySnapshot = await getDocs(routesQuery);
+        const queryWithOrder = query(
+          collection(db, 'routes'),
+          where('userId', '==', user.uid),
+          orderBy('created', 'desc')
+        );
         
-        // 사용자 정보 가져오기
-        const userDoc = await getDoc(doc(db, 'users', user.uid));
-        const userDataFromDb = userDoc.data() as UserData;
-        setUserData(userDataFromDb);
+        let querySnapshot;
+        try {
+          querySnapshot = await getDocs(routesQuery);
+        } catch (error) {
+          querySnapshot = await getDocs(queryWithOrder);
+        }
+
+        console.log('Query snapshot size:', querySnapshot.size);
+        console.log('Raw query snapshot:', querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
         
         const routesData = querySnapshot.docs.map(doc => {
           const data = doc.data();
+          console.log('Processing route document:', { id: doc.id, ...data });
+          
+          const createdAt = data.created instanceof Timestamp 
+            ? data.created.toDate().toISOString()
+            : new Date().toISOString();
+
           return {
             id: doc.id,
-            ...data,
-            userNickname: userDataFromDb?.nickname || '사용자',
-            userProfileImage: userDataFromDb?.profileImageUrl || '',
-            createdAt: data.created?.toDate?.() || new Date().toISOString()
+            title: data.title || '',
+            points: data.points || [],
+            userId: data.userId,
+            userNickname: userData.nickname || '사용자',
+            userProfileImage: userData.profileImageUrl || '',
+            createdAt,
+            duration: data.duration || 0,
+            distance: data.distance || 0,
+            path3D: data.path3D || []
           };
         }) as Route[];
 
-        console.log('Fetched routes data:', routesData);
-        console.log('Current user data:', userDataFromDb);
-
+        console.log('Final processed routes:', routesData);
         setRoutes(routesData);
       } catch (error) {
-        console.error('경로 불러오기 실패:', error);
+        console.error('데이터 불러오기 실패:', error);
+        if (error instanceof Error && error.message.includes('index')) {
+          console.log('인덱스를 생성해주세요:', error.message);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchMyRoutes();
-  }, [user]);
+    if (user && !loading) {
+      fetchMyRoutes();
+    }
+  }, [user, loading, userData]);
 
   const formatDate = (dateString: string) => {
     try {
@@ -164,10 +192,11 @@ export default function MyPage() {
             {userData?.profileImageUrl ? (
               <Image
                 src={userData.profileImageUrl}
-                alt={userData?.nickname || '사용자'}
+                alt={userData.nickname || '사용자'}
                 width={96}
                 height={96}
-                className="rounded-full object-cover"
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                className="rounded-full"
               />
             ) : (
               <User size={40} className="text-stone-400" />
@@ -182,7 +211,6 @@ export default function MyPage() {
                 <div className="text-xl font-semibold text-stone-100">{routes.length}</div>
                 <div className="text-sm text-stone-400">게시물</div>
               </div>
-              {/* 필요한 경우 팔로워/팔로잉 등의 추가 정보를 여기에 추가할 수 있습니다 */}
             </div>
           </div>
         </div>

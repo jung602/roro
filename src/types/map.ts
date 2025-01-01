@@ -23,6 +23,12 @@ export interface Point {
   images?: { url: string; path: string; }[];
 }
 
+export interface Vector3D {
+  x: number;
+  y: number;
+  z: number;
+}
+
 export interface Route {
   id: string;
   title: string;
@@ -31,6 +37,7 @@ export interface Route {
   updated?: Date;
   duration?: number;
   distance?: number;
+  path3D?: Vector3D[];
 }
 
 export interface MapViewport {

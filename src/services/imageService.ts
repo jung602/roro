@@ -1,5 +1,5 @@
 import { storage } from '../lib/firebase';
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytesResumable, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { compressImage, ImageType } from '../utils/imageCompression';
 
 export interface PlaceImage {
@@ -7,12 +7,22 @@ export interface PlaceImage {
   path: string;
 }
 
-export async function uploadPlaceImages(placeId: string, files: File[]): Promise<PlaceImage[]> {
+export interface UploadProgressCallback {
+  (progress: number): void;
+}
+
+export async function uploadPlaceImages(
+  placeId: string,
+  files: File[],
+  onProgress?: UploadProgressCallback
+): Promise<PlaceImage[]> {
   if (files.length > 5) {
     throw new Error('최대 5개의 이미지만 업로드할 수 있습니다.');
   }
 
   const images: PlaceImage[] = [];
+  const totalFiles = files.length;
+  let completedFiles = 0;
   
   for (const file of files) {
     const compressedFile = await compressImage(file, 'place');
@@ -20,10 +30,27 @@ export async function uploadPlaceImages(placeId: string, files: File[]): Promise
     const path = `places/${placeId}/${timestamp}_${file.name}`;
     const storageRef = ref(storage, path);
     
-    await uploadBytes(storageRef, compressedFile);
-    const url = await getDownloadURL(storageRef);
-    
-    images.push({ url, path });
+    await new Promise<void>((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+      
+      uploadTask.on(
+        'state_changed',
+        (snapshot) => {
+          const fileProgress = (snapshot.bytesTransferred / snapshot.totalBytes);
+          const totalProgress = (completedFiles + fileProgress) / totalFiles;
+          onProgress?.(totalProgress * 100);
+        },
+        (error) => {
+          reject(error);
+        },
+        async () => {
+          const url = await getDownloadURL(uploadTask.snapshot.ref);
+          images.push({ url, path });
+          completedFiles++;
+          resolve();
+        }
+      );
+    });
   }
   
   return images;

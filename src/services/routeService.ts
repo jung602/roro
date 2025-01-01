@@ -36,7 +36,7 @@ const getUserData = async (userId: string) => {
 };
 
 const serializeRoute = async (route: Route, userId: string) => {
-  const { id, title, points, duration, distance } = route;
+  const { id, title, points, duration, distance, path3D } = route;
   console.log('저장할 포인트들:', points);
 
   // 사용자 정보 가져오기
@@ -48,37 +48,30 @@ const serializeRoute = async (route: Route, userId: string) => {
     points: points.map((point, index) => ({
       id: point.id || `point-${index}`,
       name: point.name || `위치 ${index + 1}`,
-      lat: Number(point.lat),
-      lng: Number(point.lng),
-      order: index,
-      images: point.images || [],
+      lat: point.lat,
+      lng: point.lng,
+      images: point.images || []
     })),
-    duration: duration || 0,
-    distance: distance || 0,
+    userId,
     created: serverTimestamp(),
     updated: serverTimestamp(),
-    userId,
-    userNickname: userData?.nickname || '익명',
-    userProfileImage: userData?.profileImageUrl || null,
+    duration: duration || 0,
+    distance: distance || 0,
+    path3D: path3D || [],
+    userNickname: userData?.nickname || '사용자',
+    userProfileImage: userData?.profileImageUrl || ''
   };
 };
 
-export const saveRoute = async (route: Route, userId: string): Promise<string> => {
-  try {
-    console.log('Firestore에 저장 시도:', route);
-    console.log('선택된 장소 수:', route.points.length);
-    
-    const routeData = await serializeRoute(route, userId);
-    console.log('변환된 데이터:', routeData);
-    console.log('변환된 포인트 수:', routeData.points.length);
-    
-    const docRef = await addDoc(collection(db, ROUTES_COLLECTION), routeData);
-    console.log('Firestore 저장 성공! Document ID:', docRef.id);
-    return docRef.id;
-  } catch (error) {
-    console.error('Firestore 저장 에러:', error);
-    throw error;
-  }
+export const saveRoute = async (route: Route, userId: string) => {
+  console.log('Saving route:', route);
+  const serializedRoute = await serializeRoute(route, userId);
+  console.log('Serialized route:', serializedRoute);
+  
+  const docRef = await addDoc(collection(db, ROUTES_COLLECTION), serializedRoute);
+  console.log('Saved route with ID:', docRef.id);
+  
+  return docRef.id;
 };
 
 export const getRoutes = async (pageSize: number = 10): Promise<SavedRoute[]> => {

@@ -101,6 +101,7 @@ export default function RouteConfirmation() {
       },
     ],
     disableDefaultUI: true, // Remove all default UI elements
+    gestureHandling: 'greedy', // 일반적인 스크롤/줌 동작 사용
   }), []);
 
   useEffect(() => {
@@ -177,12 +178,12 @@ export default function RouteConfirmation() {
     }
   }, [updateDirections]);
 
-  const handleImagesUpload = async (index: number, files: FileList) => {
+  const handleImagesUpload = async (index: number, files: FileList, onProgress: (progress: number) => void) => {
     try {
       const location = locations[index];
       if (!location) return;
 
-      const uploadedImages = await uploadPlaceImages(`place-${location.name}-${index}`, Array.from(files));
+      const uploadedImages = await uploadPlaceImages(`place-${location.name}-${index}`, Array.from(files), onProgress);
       
       setLocations(prev => {
         const newLocations = [...prev];
