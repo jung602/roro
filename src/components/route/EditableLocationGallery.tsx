@@ -1,5 +1,5 @@
-import React from 'react';
-import Image from 'next/image';
+import React, { useState } from 'react';
+import { X } from 'lucide-react';
 
 interface Location {
   name: string;
@@ -20,48 +20,108 @@ const EditableLocationGallery: React.FC<EditableLocationGalleryProps> = ({
   onAddImages,
   onDeleteImage,
 }) => {
+  const [uploadStates, setUploadStates] = useState<{
+    [key: number]: {
+      isUploading: boolean;
+      isCompressing: boolean;
+      progress: number;
+    };
+  }>({});
+
+  const handleFileChange = async (locationIndex: number, files: FileList) => {
+    if (!files.length) return;
+
+    const currentImages = locations[locationIndex].images?.length || 0;
+    const newImages = files.length;
+    
+    if (currentImages + newImages > 5) {
+      alert('이미지는 최대 5개까지만 업로드할 수 있습니다.');
+      return;
+    }
+
+    setUploadStates(prev => ({
+      ...prev,
+      [locationIndex]: {
+        isUploading: true,
+        isCompressing: true,
+        progress: 0
+      }
+    }));
+
+    try {
+      await onAddImages(locationIndex, files);
+    } finally {
+      setUploadStates(prev => ({
+        ...prev,
+        [locationIndex]: {
+          isUploading: false,
+          isCompressing: false,
+          progress: 0
+        }
+      }));
+    }
+  };
+
   return (
-    <div className="bg-black/50 backdrop-blur-md p-4">
+    <div className="bg-stone-100 p-4">
       <div className="flex flex-col gap-4">
         {locations.map((location, locationIndex) => (
-          <div key={locationIndex} className="border border-gray-700 rounded-lg p-4">
+          <div key={locationIndex} className="bg-white rounded-lg p-4 shadow-sm">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-white font-bold">{location.name}</h3>
+              <h3 className="text-stone-900 font-bold">{location.name}</h3>
               <input
                 type="file"
                 id={`image-upload-${locationIndex}`}
                 className="hidden"
                 multiple
                 accept="image/*"
-                onChange={(e) => e.target.files && onAddImages(locationIndex, e.target.files)}
+                onChange={(e) => e.target.files && handleFileChange(locationIndex, e.target.files)}
               />
               <button
                 onClick={() => document.getElementById(`image-upload-${locationIndex}`)?.click()}
-                className="bg-blue-500 text-white px-3 py-1 rounded-lg text-sm"
+                className="text-sm text-stone-500 hover:text-stone-700"
               >
-                이미지 추가
+                {location.images?.length ? '이미지 추가' : '이미지 업로드'}
+                {location.images?.length ? ` (${location.images.length}/5)` : ''}
               </button>
             </div>
             
-            <div className="flex gap-4 overflow-x-auto pb-4">
+            <div className="flex gap-2 overflow-x-auto py-1">
               {(location.images || []).map((image, imageIndex) => (
-                <div key={imageIndex} className="relative min-w-[200px] h-[150px] group">
-                  <Image
+                <div key={imageIndex} className="relative flex-shrink-0 group">
+                  <img
                     src={image.url}
                     alt={`${location.name} 이미지 ${imageIndex + 1}`}
-                    fill
-                    className="object-cover rounded-lg"
+                    className="w-12 h-12 object-cover rounded-md"
+                    style={{ minWidth: '48px' }}
                   />
                   <button
                     onClick={() => onDeleteImage(locationIndex, imageIndex)}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="absolute -top-1 -right-1 w-5 h-5 bg-stone-800 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
+                    <X size={12} className="text-white" />
                   </button>
                 </div>
               ))}
+              {uploadStates[locationIndex]?.isUploading && (
+                <div className="relative flex-shrink-0">
+                  <div className="w-12 h-12 bg-stone-200 rounded-md flex items-center justify-center overflow-hidden">
+                    {uploadStates[locationIndex]?.isCompressing ? (
+                      <span className="text-xs font-medium text-stone-600">압축중...</span>
+                    ) : (
+                      <>
+                        <div 
+                          className="absolute inset-0 bg-stone-300 transition-all duration-200"
+                          style={{ transform: `translateY(${100 - (uploadStates[locationIndex]?.progress || 0)}%)` }}
+                        />
+                        <span className="relative text-xs font-medium z-10">
+                          {Math.round(uploadStates[locationIndex]?.progress || 0)}%
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         ))}

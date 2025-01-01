@@ -227,7 +227,8 @@ export default function MyPage() {
                 address: `${point.lat},${point.lng}`,
                 lat: point.lat,
                 lng: point.lng,
-              }))))}&fromFeed=true&title=${encodeURIComponent(route.title)}&userNickname=${encodeURIComponent(route.userNickname)}&userProfileImage=${encodeURIComponent(route.userProfileImage)}`)}
+                images: point.images
+              }))))}&fromFeed=true&title=${encodeURIComponent(route.title)}&userNickname=${encodeURIComponent(route.userNickname)}&userProfileImage=${encodeURIComponent(route.userProfileImage)}&userId=${encodeURIComponent(route.userId)}&routeId=${encodeURIComponent(route.id)}`)}
             >
               <div className="relative bg-stone-900 h-40 m-1 rounded">
                 <RouteThumbnail points={route.points} />

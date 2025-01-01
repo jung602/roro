@@ -12,6 +12,7 @@ interface RouteInfoProps {
   isEditing?: boolean;
   canEdit?: boolean;
   onEditClick?: () => void;
+  onDeleteClick?: () => void;
   onSaveClick?: () => void;
   onCancelEdit?: () => void;
 }
@@ -26,6 +27,7 @@ const RouteInfo: React.FC<RouteInfoProps> = ({
   isEditing,
   canEdit,
   onEditClick,
+  onDeleteClick,
   onSaveClick,
   onCancelEdit,
 }) => {
@@ -52,12 +54,20 @@ const RouteInfo: React.FC<RouteInfoProps> = ({
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={onEditClick}
-                  className="bg-stone-200 text-stone-900 px-4 py-2 rounded-lg"
-                >
-                  편집
-                </button>
+                <>
+                  <button
+                    onClick={onEditClick}
+                    className="bg-stone-200 text-stone-900 px-4 py-2 rounded-lg"
+                  >
+                    편집
+                  </button>
+                  <button
+                    onClick={onDeleteClick}
+                    className="bg-red-500 text-white px-4 py-2 rounded-lg"
+                  >
+                    삭제
+                  </button>
+                </>
               )}
             </div>
           )}

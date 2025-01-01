@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { GoogleMap, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api';
 import * as THREE from 'three';
-import { saveRoute, updateRoute } from '../src/services/routeService';
+import { saveRoute, updateRoute, deleteRoute } from '../src/services/routeService';
 import { uploadPlaceImages, deletePlaceImage } from '../src/services/imageService';
 import BackButton from '../src/components/common/BackButton';
 import { googleMapsConfig } from '@/utils/googleMapsConfig';
@@ -167,7 +167,7 @@ export default function Map() {
     }
   }, [isSaving, locationList, routeTitle, user, directions, router, path3D]);
 
-  const handleAddImages = useCallback(async (locationIndex: number, files: FileList) => {
+  const handleAddImages = useCallback(async (locationIndex: number, files: FileList, onProgress?: (progress: number) => void) => {
     try {
       const location = editedLocations[locationIndex];
       const currentImages = location.images || [];
@@ -175,24 +175,42 @@ export default function Map() {
         throw new Error('validation/이미지는 최대 5개까지만 업로드할 수 있습니다.');
       }
 
-      const uploadedImages = await uploadPlaceImages(`place-${location.name}-${locationIndex}`, Array.from(files));
+      const uploadedImages = await uploadPlaceImages(
+        `place-${location.name}-${locationIndex}`, 
+        Array.from(files),
+        (progress) => {
+          if (onProgress) {
+            onProgress(progress);
+          }
+        }
+      );
+
       const newLocations = [...editedLocations];
       newLocations[locationIndex] = {
         ...location,
         images: [...currentImages, ...uploadedImages]
       };
       setEditedLocations(newLocations);
+      
+      // 이미지 업로드 후 locationList도 업데이트
+      const newLocationList = [...locationList];
+      newLocationList[locationIndex] = {
+        ...location,
+        images: [...currentImages, ...uploadedImages]
+      };
+      setLocationList(newLocationList);
     } catch (error) {
       showErrorMessage(error);
     }
-  }, [editedLocations]);
+  }, [editedLocations, locationList]);
 
   const handleDeleteImage = useCallback(async (locationIndex: number, imageIndex: number) => {
     try {
       const location = editedLocations[locationIndex];
       if (!location.images) return;
 
-      await deletePlaceImage(location.images[imageIndex].path);
+      const imageToDelete = location.images[imageIndex];
+      await deletePlaceImage(imageToDelete.path);
 
       const newLocations = [...editedLocations];
       newLocations[locationIndex] = {
@@ -200,10 +218,18 @@ export default function Map() {
         images: location.images.filter((_, i) => i !== imageIndex)
       };
       setEditedLocations(newLocations);
+
+      // locationList도 함께 업데이트
+      const newLocationList = [...locationList];
+      newLocationList[locationIndex] = {
+        ...location,
+        images: location.images.filter((_, i) => i !== imageIndex)
+      };
+      setLocationList(newLocationList);
     } catch (error) {
       showErrorMessage(error);
     }
-  }, [editedLocations]);
+  }, [editedLocations, locationList]);
 
   const handleSaveChanges = useCallback(async () => {
     try {
@@ -240,6 +266,20 @@ export default function Map() {
     setEditedLocations(locationList);
   }, [locationList]);
 
+  const handleDeleteRoute = useCallback(async () => {
+    if (!user || !router.query.routeId) return;
+    
+    if (window.confirm('정말로 이 경로를 삭제하시겠습니까?')) {
+      try {
+        await deleteRoute(router.query.routeId as string, user.uid);
+        router.push('/mypage');
+      } catch (error) {
+        console.error('Failed to delete route:', error);
+        alert('경로 삭제에 실패했습니다.');
+      }
+    }
+  }, [user, router]);
+
   if (loadError) return <div>Error loading maps</div>;
   if (!isLoaded) return <div>Loading...</div>;
 
@@ -269,6 +309,7 @@ export default function Map() {
             isEditing={isEditing}
             canEdit={canEdit}
             onEditClick={toggleEditMode}
+            onDeleteClick={handleDeleteRoute}
             onSaveClick={handleSaveChanges}
             onCancelEdit={() => setIsEditing(false)}
           />

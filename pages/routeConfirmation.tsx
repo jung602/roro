@@ -183,13 +183,22 @@ export default function RouteConfirmation() {
       const location = locations[index];
       if (!location) return;
 
-      const uploadedImages = await uploadPlaceImages(`place-${location.name}-${index}`, Array.from(files), onProgress);
+      const currentImages = location.images || [];
+      if (currentImages.length + files.length > 5) {
+        throw new Error('이미지는 최대 5개까지만 업로드할 수 있습니다.');
+      }
+
+      const uploadedImages = await uploadPlaceImages(
+        `place-${location.name}-${index}`, 
+        Array.from(files), 
+        onProgress
+      );
       
       setLocations(prev => {
         const newLocations = [...prev];
         newLocations[index] = {
           ...newLocations[index],
-          images: uploadedImages
+          images: [...currentImages, ...uploadedImages]
         };
         return newLocations;
       });

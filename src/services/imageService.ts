@@ -11,6 +11,11 @@ export interface UploadProgressCallback {
   (progress: number): void;
 }
 
+// 이미지 크기에 따른 압축 여부 결정
+const shouldCompress = (file: File): boolean => {
+  return file.size > 1024 * 1024; // 1MB 이상인 경우에만 압축
+};
+
 export async function uploadPlaceImages(
   placeId: string,
   files: File[],
@@ -24,45 +29,67 @@ export async function uploadPlaceImages(
   const totalFiles = files.length;
   let completedFiles = 0;
   
-  for (const file of files) {
-    const compressedFile = await compressImage(file, 'place');
+  // 압축 진행률을 포함한 전체 진행률 계산
+  const calculateTotalProgress = (fileIndex: number, compressionProgress: number, uploadProgress: number) => {
+    const fileWeight = 1 / totalFiles;
+    const compressionWeight = 0.3; // 압축이 전체의 30%
+    const uploadWeight = 0.7; // 업로드가 전체의 70%
+    
+    const previousFilesProgress = (fileIndex / totalFiles) * 100;
+    const currentFileProgress = (
+      (compressionProgress * compressionWeight + uploadProgress * uploadWeight) * fileWeight
+    ) * 100;
+    
+    return previousFilesProgress + currentFileProgress;
+  };
+
+  // 병렬 업로드를 위한 Promise 배열
+  const uploadPromises = files.map(async (file, fileIndex) => {
+    // 압축 단계
+    let processedFile = file;
+    if (shouldCompress(file)) {
+      onProgress?.(calculateTotalProgress(fileIndex, 0, 0));
+      processedFile = await compressImage(file, 'place', (compressionProgress) => {
+        onProgress?.(calculateTotalProgress(fileIndex, compressionProgress, 0));
+      });
+    }
+
     const timestamp = Date.now();
     const path = `places/${placeId}/${timestamp}_${file.name}`;
     const storageRef = ref(storage, path);
     
-    await new Promise<void>((resolve, reject) => {
-      const uploadTask = uploadBytesResumable(storageRef, compressedFile);
+    return new Promise<PlaceImage>((resolve, reject) => {
+      const uploadTask = uploadBytesResumable(storageRef, processedFile);
       
       uploadTask.on(
         'state_changed',
         (snapshot) => {
-          const fileProgress = (snapshot.bytesTransferred / snapshot.totalBytes);
-          const totalProgress = (completedFiles + fileProgress) / totalFiles;
-          onProgress?.(totalProgress * 100);
+          const uploadProgress = snapshot.bytesTransferred / snapshot.totalBytes;
+          onProgress?.(calculateTotalProgress(fileIndex, 1, uploadProgress));
         },
-        (error) => {
-          reject(error);
-        },
+        reject,
         async () => {
           const url = await getDownloadURL(uploadTask.snapshot.ref);
-          images.push({ url, path });
           completedFiles++;
-          resolve();
+          onProgress?.(calculateTotalProgress(fileIndex + 1, 1, 1));
+          resolve({ url, path });
         }
       );
     });
-  }
+  });
   
-  return images;
+  // 모든 업로드를 병렬로 처리
+  const results = await Promise.all(uploadPromises);
+  return results;
 }
 
 export async function uploadThumbnail(userId: string, file: File): Promise<PlaceImage> {
-  const compressedFile = await compressImage(file, 'thumbnail');
+  const processedFile = shouldCompress(file) ? await compressImage(file, 'thumbnail') : file;
   const timestamp = Date.now();
   const path = `thumbnails/${userId}/${timestamp}_${file.name}`;
   const storageRef = ref(storage, path);
   
-  await uploadBytes(storageRef, compressedFile);
+  await uploadBytes(storageRef, processedFile);
   const url = await getDownloadURL(storageRef);
   
   return { url, path };
@@ -74,11 +101,11 @@ export async function deletePlaceImage(path: string): Promise<void> {
 }
 
 export async function uploadImage(file: File, folder: string, fileName: string): Promise<string> {
-  const compressedFile = await compressImage(file, 'profile');
+  const processedFile = shouldCompress(file) ? await compressImage(file, 'profile') : file;
   const path = `${folder}/${fileName}`;
   const storageRef = ref(storage, path);
   
-  await uploadBytes(storageRef, compressedFile);
+  await uploadBytes(storageRef, processedFile);
   const url = await getDownloadURL(storageRef);
   
   return url;

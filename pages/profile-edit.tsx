@@ -2,14 +2,14 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
 import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, deleteObject } from 'firebase/storage';
 import { db, storage } from '@/lib/firebase';
-import { compressImage } from '@/utils/imageCompression';
+import { uploadImage } from '@/services/imageService';
 import Image from 'next/image';
 import { ArrowLeft } from 'lucide-react';
 
 export default function ProfileEdit() {
-  const { user, loading } = useAuth();
+  const { user, loading, refreshUserData } = useAuth();
   const router = useRouter();
   const [nickname, setNickname] = useState('');
   const [profileImage, setProfileImage] = useState<File | null>(null);
@@ -44,50 +44,12 @@ export default function ProfileEdit() {
     const file = e.target.files?.[0];
     if (file) {
       try {
-        const compressedFile = await compressImage(file);
-        setProfileImage(compressedFile);
-        setPreviewUrl(URL.createObjectURL(compressedFile));
+        setProfileImage(file);
+        setPreviewUrl(URL.createObjectURL(file));
       } catch (error) {
         console.error('이미지 처리 실패:', error);
         alert('이미지 처리에 실패했습니다.');
       }
-    }
-  };
-
-  const convertToBase64 = (file: File): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
-      reader.onerror = (error) => reject(error);
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const uploadImage = async (file: File): Promise<string> => {
-    if (!user) throw new Error('사용자 인증이 필요합니다.');
-    
-    const timestamp = Date.now();
-    const fileExtension = file.type.split('/')[1] || 'jpg';
-    const fileName = `${user.uid}_${timestamp}.${fileExtension}`;
-    const storageRef = ref(storage, `profile-images/${user.uid}/${fileName}`);
-    
-    try {
-      // 파일을 Base64로 변환
-      const base64Data = await convertToBase64(file);
-      const base64String = base64Data.split(',')[1];  // 'data:image/jpeg;base64,' 부분 제거
-      
-      // Base64 문자열로 업로드
-      await uploadString(storageRef, base64String, 'base64', {
-        contentType: file.type,
-        cacheControl: 'public,max-age=7200'
-      });
-      
-      // 다운로드 URL 획득
-      const downloadURL = await getDownloadURL(storageRef);
-      return downloadURL;
-    } catch (error) {
-      console.error('이미지 업로드 실패:', error);
-      throw new Error('이미지 업로드에 실패했습니다.');
     }
   };
 
@@ -118,24 +80,10 @@ export default function ProfileEdit() {
             }
           }
 
-          // 새 이미지 업로드
           const timestamp = Date.now();
           const fileExtension = profileImage.type.split('/')[1] || 'jpg';
           const fileName = `${user.uid}_${timestamp}.${fileExtension}`;
-          const storageRef = ref(storage, `profile-images/${user.uid}/${fileName}`);
-          
-          // 파일을 Base64로 변환
-          const base64Data = await convertToBase64(profileImage);
-          const base64String = base64Data.split(',')[1];  // 'data:image/jpeg;base64,' 부분 제거
-          
-          // Base64 문자열로 업로드
-          await uploadString(storageRef, base64String, 'base64', {
-            contentType: profileImage.type,
-            cacheControl: 'public,max-age=7200'
-          });
-          
-          // 다운로드 URL 획득
-          profileImageUrl = await getDownloadURL(storageRef);
+          profileImageUrl = await uploadImage(profileImage, 'profile-images', fileName);
         } catch (error) {
           console.error('이미지 업로드 실패:', error);
           throw new Error('이미지 업로드에 실패했습니다.');
@@ -148,6 +96,7 @@ export default function ProfileEdit() {
         updatedAt: new Date().toISOString(),
       });
 
+      await refreshUserData();
       alert('프로필이 성공적으로 수정되었습니다.');
       router.push('/mypage');
     } catch (error) {

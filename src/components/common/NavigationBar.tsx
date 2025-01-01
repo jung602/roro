@@ -23,7 +23,7 @@ export default function NavigationBar() {
 
   return (
     <>
-      <div className="w-full mx-auto p-4 flex items-center justify-between">
+      <div className="w-dvw overflow-x-hidden mx-auto p-4 flex items-center justify-between">
         <button
           onClick={() => router.push('/')}
           className={getButtonStyles('/')}

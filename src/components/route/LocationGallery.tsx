@@ -15,17 +15,19 @@ interface LocationGalleryProps {
 
 const LocationGallery: React.FC<LocationGalleryProps> = ({ locations }) => {
   const [selectedLocation, setSelectedLocation] = useState<number>(0);
+  const [imageError, setImageError] = useState<{[key: string]: boolean}>({});
   
   // 이미지가 있는 장소만 필터링
   const locationsWithImages = locations.filter(location => location.images && location.images.length > 0);
-  console.log('All locations:', locations);
-  console.log('Locations with images:', locationsWithImages);
 
   // 이미지가 있는 장소가 없으면 아무것도 렌더링하지 않음
   if (locationsWithImages.length === 0) {
-    console.log('No locations with images found');
     return null;
   }
+
+  const handleImageError = (imageUrl: string) => {
+    setImageError(prev => ({...prev, [imageUrl]: true}));
+  };
 
   return (
     <div className="rounded bg-stone-500/50 backdrop-blur-md m-4 p-4">
@@ -51,14 +53,19 @@ const LocationGallery: React.FC<LocationGalleryProps> = ({ locations }) => {
             
             <div className="flex gap-4 overflow-x-auto pb-4">
               {locationsWithImages[selectedLocation].images!.map((image, index) => (
-                <div key={index} className="relative min-w-[200px] h-[150px]">
-                  <Image
-                    src={image.url}
-                    alt={`${locationsWithImages[selectedLocation].name} 이미지 ${index + 1}`}
-                    fill
-                    className="object-cover rounded-lg"
-                  />
-                </div>
+                !imageError[image.url] && (
+                  <div key={index} className="relative min-w-[200px] h-[150px]">
+                    <Image
+                      src={image.url}
+                      alt={`${locationsWithImages[selectedLocation].name} 이미지 ${index + 1}`}
+                      width={200}
+                      height={150}
+                      className="object-cover rounded-lg w-full h-full"
+                      onError={() => handleImageError(image.url)}
+                      unoptimized
+                    />
+                  </div>
+                )
               ))}
             </div>
           </div>

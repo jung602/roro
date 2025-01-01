@@ -1,4 +1,4 @@
-import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, serverTimestamp, Timestamp, where, limit, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, serverTimestamp, Timestamp, where, limit, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Route, SavedRoute } from '../types/map';
 
@@ -218,6 +218,35 @@ export const updateRoute = async (route: Route, userId: string): Promise<void> =
     });
   } catch (error) {
     console.error('Route update error:', error);
+    throw error;
+  }
+};
+
+export const deleteRoute = async (routeId: string, userId: string): Promise<void> => {
+  try {
+    const routeRef = doc(db, ROUTES_COLLECTION, routeId);
+    const routeDoc = await getDoc(routeRef);
+    
+    if (!routeDoc.exists()) {
+      throw new Error('Route not found');
+    }
+
+    const data = routeDoc.data();
+    if (data.userId !== userId) {
+      throw new Error('Unauthorized');
+    }
+
+    await deleteDoc(routeRef);
+    
+    // 캐시 무효화
+    const cacheKeys = Array.from(cache.keys());
+    cacheKeys.forEach(key => {
+      if (key.includes('routes_') || key === `route_${routeId}`) {
+        cache.delete(key);
+      }
+    });
+  } catch (error) {
+    console.error('Route deletion error:', error);
     throw error;
   }
 }; 
