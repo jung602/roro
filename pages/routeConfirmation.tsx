@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { GoogleMap, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api';
 import {
@@ -32,9 +32,10 @@ interface Location {
 
 export default function RouteConfirmation() {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [directions, setDirections] = useState<google.maps.DirectionsResult | null>(null);
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>({ lat: 0, lng: 0 });
   const [routeMarkers, setRouteMarkers] = useState<google.maps.LatLngLiteral[]>([]);
+  const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
   const router = useRouter();
 
   const sensors = useSensors(
@@ -119,9 +120,31 @@ export default function RouteConfirmation() {
     }
   }, [router.query.locations]);
 
+  const clearRoute = useCallback(() => {
+    if (directionsRendererRef.current) {
+      directionsRendererRef.current.setMap(null);
+      directionsRendererRef.current = null;
+    }
+  }, []);
+
   const updateDirections = useCallback(() => {
-    if (isLoaded && locations.length >= 2) {
+    if (isLoaded && locations.length >= 2 && mapRef.current) {
+      clearRoute();
+      
       const directionsService = new google.maps.DirectionsService();
+      const renderer = new google.maps.DirectionsRenderer({
+        suppressMarkers: true,
+        polylineOptions: {
+          strokeColor: "#1c1917",
+          strokeWeight: 4,
+          strokeOpacity: 1,
+          zIndex: 1,
+        },
+      });
+      
+      renderer.setMap(mapRef.current);
+      directionsRendererRef.current = renderer;
+
       directionsService.route(
         {
           origin: locations[0].address,
@@ -131,52 +154,45 @@ export default function RouteConfirmation() {
         },
         (result, status) => {
           if (status === google.maps.DirectionsStatus.OK && result) {
-            setDirections(result);
+            renderer.setDirections(result);
             
-            // Extract exact route points from the directions result
             const legs = result.routes[0].legs;
             const markers: google.maps.LatLngLiteral[] = [];
             
-            // Add start location of first leg
             markers.push(legs[0].start_location.toJSON());
-            
-            // Add end locations of each leg except the last one (they are waypoints)
             for (let i = 0; i < legs.length - 1; i++) {
               markers.push(legs[i].end_location.toJSON());
             }
-            
-            // Add end location of last leg
             markers.push(legs[legs.length - 1].end_location.toJSON());
             
             setRouteMarkers(markers);
           } else {
             console.error("Directions request failed. Status:", status);
+            clearRoute();
           }
         }
       );
     }
-  }, [isLoaded, locations]);
+  }, [isLoaded, locations, clearRoute]);
 
   useEffect(() => {
-    updateDirections();
-  }, [updateDirections]);
+    if (locations.length >= 2) {
+      updateDirections();
+    }
+  }, [locations, updateDirections]);
 
   const handleDragEnd = useCallback((event: any) => {
     const { active, over } = event;
     
     if (active.id !== over.id) {
+      clearRoute();
       setLocations((items) => {
         const oldIndex = items.findIndex((item) => item.name === active.id);
         const newIndex = items.findIndex((item) => item.name === over.id);
-        
-        const newLocations = arrayMove(items, oldIndex, newIndex);
-        setTimeout(() => {
-          updateDirections();
-        }, 0);
-        return newLocations;
+        return arrayMove(items, oldIndex, newIndex);
       });
     }
-  }, [updateDirections]);
+  }, [clearRoute]);
 
   const handleImagesUpload = async (index: number, files: FileList, onProgress: (progress: number) => void) => {
     try {
@@ -227,23 +243,13 @@ export default function RouteConfirmation() {
           center={mapCenter}
           zoom={10}
           options={mapOptions}
+          onLoad={(map) => {
+            mapRef.current = map;
+          }}
         >
-          {directions && (
-            <DirectionsRenderer
-              directions={directions}
-              options={{
-                suppressMarkers: true,
-                polylineOptions: {
-                  strokeColor: "#1c1917",
-                  strokeWeight: 4,
-                  strokeOpacity: 0.7,
-                },
-              }}
-            />
-          )}
           {routeMarkers.map((position, index) => (
             <DynamicCircleMarker
-              key={index}
+              key={`marker-${index}`}
               position={position}
               number={index + 1}
             />

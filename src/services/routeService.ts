@@ -1,6 +1,7 @@
 import { collection, addDoc, getDocs, doc, getDoc, query, orderBy, serverTimestamp, Timestamp, where, limit, updateDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Route, SavedRoute } from '../types/map';
+import { RouteData, RoutePoint } from '@/types/route';
 
 const ROUTES_COLLECTION = 'routes';
 const CACHE_DURATION = 5 * 60 * 1000; // 5분
@@ -103,18 +104,20 @@ export const getRoutes = async (pageSize: number = 10): Promise<SavedRoute[]> =>
       const data = doc.data();
       const user = userDataMap.get(data.userId);
       
+      const points = data.points
+        .sort((a: any, b: any) => a.order - b.order)
+        .map((point: { id: string; name: string; lat: number; lng: number; images?: any[] }) => ({
+          id: point.id,
+          name: point.name,
+          lat: Number(point.lat),
+          lng: Number(point.lng),
+          images: point.images || [],
+        }));
+
       return {
         id: doc.id,
         title: data.title,
-        points: data.points
-          .sort((a: any, b: any) => a.order - b.order)
-          .map((point: any) => ({
-            id: point.id,
-            name: point.name,
-            lat: Number(point.lat),
-            lng: Number(point.lng),
-            images: point.images || [],
-          })),
+        points: points,
         duration: Number(data.duration),
         distance: Number(data.distance),
         created: data.created instanceof Timestamp ? data.created.toDate() : new Date(),
