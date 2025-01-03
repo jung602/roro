@@ -3,7 +3,6 @@ import { useRouter } from 'next/router';
 import { getRoutes } from '../src/services/routeService';
 import { SavedRoute } from '../src/types/map';
 import RouteThumbnail from '../src/components/route/RouteThumbnail';
-import NavigationBar from '../src/components/common/NavigationBar';
 import { User } from 'lucide-react';
 import Image from 'next/image';
 

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { NextPage } from 'next';
 import Head from 'next/head';
 import dynamic from 'next/dynamic';
+import { useRouter } from 'next/router';
 import { getRoutes } from '@/services/routeService';
 import { SavedRoute } from '@/types/map';
 import { GeoPoint, ArcData, GlobeProps } from '../src/components/map/Globe';
@@ -13,6 +14,7 @@ const Globe = dynamic<GlobeProps>(() => import('../src/components/map/Globe'), {
 });
 
 const GlobePage: NextPage = () => {
+  const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [currentLocation, setCurrentLocation] = useState<[number, number] | null>(null);
@@ -120,10 +122,16 @@ const GlobePage: NextPage = () => {
           return {
             lat: point.lat,
             lng: point.lng,
-            size: 0.3,
-            dotRadius: 0.3,
+            size: 1.0,
+            dotRadius: 1.0,
             color: '#ffffff',
-            text: point.name || '',
+            name: point.name || '위치',
+            text: point.name || '위치',
+            routeId: route.id,
+            userId: route.userId,
+            title: route.title,
+            userNickname: route.userNickname,
+            userProfileImage: route.userProfileImage,
           } as GeoPoint;
         }
         return null;
@@ -135,9 +143,10 @@ const GlobePage: NextPage = () => {
         lat: currentLocation[0],
         lng: currentLocation[1],
         size: 1.5,
-        dotRadius: 1,
+        dotRadius: 1.0,
         color: '#ff0000',
-        text: '',
+        name: '현재 위치',
+        text: '현재 위치',
       };
       return [currentLocationLabel, ...routeLabels];
     }
@@ -168,6 +177,30 @@ const GlobePage: NextPage = () => {
       globeEl.current.controls().autoRotateSpeed = 0.5;
     }
   }, [currentLocation]);
+
+  const handleLabelClick = useCallback((point: GeoPoint) => {
+    if (point.routeId && point.userId) {
+      // 클릭한 포인트의 전체 경로 정보 찾기
+      const selectedRoute = routes.find(route => route.id === point.routeId);
+      
+      if (selectedRoute) {
+        router.push({
+          pathname: '/map',
+          query: {
+            routeId: point.routeId,
+            userId: point.userId,
+            title: selectedRoute.title,
+            userNickname: selectedRoute.userNickname,
+            userProfileImage: selectedRoute.userProfileImage,
+            locations: JSON.stringify(selectedRoute.points),
+            duration: selectedRoute.duration,
+            distance: selectedRoute.distance,
+            fromFeed: 'true'
+          }
+        });
+      }
+    }
+  }, [router, routes]);
 
   return (
     <>
@@ -234,6 +267,7 @@ const GlobePage: NextPage = () => {
               height={dimensions.height}
               labelData={labelData}
               arcData={arcData}
+              onLabelClick={handleLabelClick}
             />
           )}
         </main>

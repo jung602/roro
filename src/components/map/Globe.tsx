@@ -10,6 +10,13 @@ export interface GeoPoint {
   dotRadius?: number;
   color?: string;
   text?: string;
+  id?: string;
+  name?: string;
+  routeId?: string;
+  userId?: string;
+  title?: string;
+  userNickname?: string;
+  userProfileImage?: string;
 }
 
 export interface ArcData {
@@ -25,9 +32,10 @@ export interface GlobeProps {
   height: number;
   labelData: GeoPoint[];
   arcData: ArcData[];
+  onLabelClick?: (point: GeoPoint) => void;
 }
 
-const _Globe = ({ width, height, labelData, arcData }: GlobeProps) => {
+const _Globe = ({ width, height, labelData, arcData, onLabelClick }: GlobeProps) => {
   const globeEl = useRef<GlobeMethods | undefined>(undefined);
 
   // 화면 크기에 따른 지구본 크기 계산
@@ -74,6 +82,12 @@ const _Globe = ({ width, height, labelData, arcData }: GlobeProps) => {
     }
   }, []);
 
+  const handleLabelClick = (label: object) => {
+    if (onLabelClick) {
+      onLabelClick(label as GeoPoint);
+    }
+  };
+
   return (
     <div className="flex items-center justify-center w-full h-full">
       <Globe
@@ -91,11 +105,11 @@ const _Globe = ({ width, height, labelData, arcData }: GlobeProps) => {
         labelText={() => ''}
         labelSize={(obj: object) => {
           const point = obj as GeoPoint;
-          return point.size || 0.3;
+          return point.size || 3.0;
         }}
         labelDotRadius={(obj: object) => {
           const point = obj as GeoPoint;
-          return point.dotRadius || 0.3;
+          return point.dotRadius || 3.0;
         }}
         labelColor={(obj: object) => {
           const point = obj as GeoPoint;
@@ -104,6 +118,7 @@ const _Globe = ({ width, height, labelData, arcData }: GlobeProps) => {
         labelResolution={2}
         labelAltitude={0.01}
         labelDotOrientation={() => 'right'}
+        onLabelClick={handleLabelClick}
         arcsData={arcData}
         arcColor="color"
         arcAltitude={0}
