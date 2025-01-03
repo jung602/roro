@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+// @ts-ignore
 import Globe, { GlobeMethods } from "react-globe.gl";
 
 export interface GeoPoint {
