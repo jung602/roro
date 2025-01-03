@@ -78,7 +78,9 @@ const _Globe = ({ width, height, labelData, arcData, onLabelClick }: GlobeProps)
       if (controls) {
         controls.autoRotate = true;
         controls.autoRotateSpeed = 0.5;
-        controls.enableZoom = false;
+        controls.enableZoom = true;
+        controls.minDistance = 200;
+        controls.maxDistance = 1800;
       }
     }
   }, []);
