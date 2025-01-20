@@ -109,9 +109,11 @@ export default function RouteConfirmation() {
     if (typeof window !== 'undefined' && router.query.locations) {
       try {
         const parsedLocations = JSON.parse(router.query.locations as string) as Location[];
+        console.log('Parsed locations:', parsedLocations);
         setLocations(parsedLocations);
         if (parsedLocations.length > 0) {
           setMapCenter({ lat: parsedLocations[0].lat, lng: parsedLocations[0].lng });
+          console.log('Map center set to:', { lat: parsedLocations[0].lat, lng: parsedLocations[0].lng });
         }
       } catch (error) {
         console.error("Failed to parse locations:", error);
