@@ -32,7 +32,7 @@ interface Location {
 
 export default function RouteConfirmation() {
   const [locations, setLocations] = useState<Location[]>([]);
-  const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>({ lat: 0, lng: 0 });
+  const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>({ lat: 37.5666805, lng: 126.9784147 });
   const [routeMarkers, setRouteMarkers] = useState<google.maps.LatLngLiteral[]>([]);
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
@@ -111,8 +111,15 @@ export default function RouteConfirmation() {
         const parsedLocations = JSON.parse(router.query.locations as string) as Location[];
         console.log('Parsed locations:', parsedLocations);
         setLocations(parsedLocations);
-        if (parsedLocations.length > 0) {
-          setMapCenter({ lat: parsedLocations[0].lat, lng: parsedLocations[0].lng });
+        if (parsedLocations.length > 0 && 
+            typeof parsedLocations[0].lat === 'number' && 
+            typeof parsedLocations[0].lng === 'number' &&
+            !isNaN(parsedLocations[0].lat) && 
+            !isNaN(parsedLocations[0].lng)) {
+          setMapCenter({ 
+            lat: parsedLocations[0].lat, 
+            lng: parsedLocations[0].lng 
+          });
           console.log('Map center set to:', { lat: parsedLocations[0].lat, lng: parsedLocations[0].lng });
         }
       } catch (error) {
@@ -147,11 +154,18 @@ export default function RouteConfirmation() {
       renderer.setMap(mapRef.current);
       directionsRendererRef.current = renderer;
 
+      const origin = new google.maps.LatLng(locations[0].lat, locations[0].lng);
+      const destination = new google.maps.LatLng(locations[locations.length - 1].lat, locations[locations.length - 1].lng);
+      const waypoints = locations.slice(1, -1).map(location => ({
+        location: new google.maps.LatLng(location.lat, location.lng),
+        stopover: true
+      }));
+
       directionsService.route(
         {
-          origin: locations[0].address,
-          destination: locations[locations.length - 1].address,
-          waypoints: locations.slice(1, -1).map(location => ({ location: location.address, stopover: true })),
+          origin,
+          destination,
+          waypoints,
           travelMode: google.maps.TravelMode.WALKING,
         },
         (result, status) => {
@@ -178,10 +192,10 @@ export default function RouteConfirmation() {
   }, [isLoaded, locations, clearRoute]);
 
   useEffect(() => {
-    if (locations.length >= 2) {
+    if (locations.length >= 2 && mapRef.current) {
       updateDirections();
     }
-  }, [locations, updateDirections]);
+  }, [locations, updateDirections, mapRef]);
 
   const handleDragEnd = useCallback((event: any) => {
     const { active, over } = event;
@@ -247,6 +261,9 @@ export default function RouteConfirmation() {
           options={mapOptions}
           onLoad={(map) => {
             mapRef.current = map;
+            if (locations.length >= 2) {
+              updateDirections();
+            }
           }}
         >
           {routeMarkers.map((position, index) => (

@@ -5,7 +5,7 @@ import { ArrowRight } from 'lucide-react';
 import BackButton from '../src/components/common/BackButton';
 
 export default function Search() {
-  const [locations, setLocations] = useState<{name: string, address: string}[]>([]);
+  const [locations, setLocations] = useState<{name: string, address: string, lat: number, lng: number}[]>([]);
   const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
@@ -32,7 +32,7 @@ export default function Search() {
       placesService.findPlaceFromQuery(
         {
           query: input,
-          fields: ['name', 'formatted_address'],
+          fields: ['name', 'formatted_address', 'geometry'],
         },
         (results, status) => {
           if (status === google.maps.places.PlacesServiceStatus.OK && results && results[0]) {
@@ -40,7 +40,9 @@ export default function Search() {
             setLocations(prevLocations => {
               const newLocation = {
                 name: place.name || '',
-                address: place.formatted_address || ''
+                address: place.formatted_address || '',
+                lat: place.geometry?.location?.lat() || 0,
+                lng: place.geometry?.location?.lng() || 0
               };
               return newLocation.name ? [...prevLocations, newLocation] : prevLocations;
             });
@@ -114,9 +116,28 @@ export default function Search() {
             key={prediction.place_id}
             className="py-1 px-2 hover:bg-stone-300 cursor-pointer text-stone-900"
             onClick={() => {
-              if (inputRef.current) {
-                inputRef.current.value = prediction.description;
-                handleLocationSubmit({ preventDefault: () => {} } as React.FormEvent<HTMLFormElement>);
+              if (placesService && inputRef.current) {
+                placesService.getDetails(
+                  {
+                    placeId: prediction.place_id,
+                    fields: ['name', 'formatted_address', 'geometry']
+                  },
+                  (place, status) => {
+                    if (status === google.maps.places.PlacesServiceStatus.OK && place && inputRef.current) {
+                      setLocations(prevLocations => {
+                        const newLocation = {
+                          name: place.name || '',
+                          address: place.formatted_address || '',
+                          lat: place.geometry?.location?.lat() || 0,
+                          lng: place.geometry?.location?.lng() || 0
+                        };
+                        return newLocation.name ? [...prevLocations, newLocation] : prevLocations;
+                      });
+                      inputRef.current.value = '';
+                      setPredictions([]);
+                    }
+                  }
+                );
               }
             }}
           >
