@@ -2,18 +2,42 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // This rule allows anyone with your Firestore database reference to view, edit,
-    // and delete all data in your Firestore database. It is useful for getting
-    // started, but it is configured to expire after 30 days because it
-    // leaves your app open to attackers. At that time, all client
-    // requests to your Firestore database will be denied.
-    //
-    // Make sure to write security rules for your app before that time, or else
-    // all client requests to your Firestore database will be denied until you Update
-    // your rules
+    // 기본 함수들
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // 사용자 컬렉션 규칙
+    match /users/{userId} {
+      // 사용자는 자신의 문서만 읽고 쓸 수 있음
+      allow read: if isOwner(userId);
+      // 사용자 생성은 인증된 사용자만 가능하며, 자신의 ID로만 생성 가능
+      allow create: if isOwner(userId);
+      // 사용자 업데이트는 자신의 문서만 가능
+      allow update: if isOwner(userId);
+      // 사용자 삭제는 자신의 문서만 가능
+      allow delete: if isOwner(userId);
+    }
+    
+    // 경로 컬렉션 규칙
+    match /routes/{routeId} {
+      // 모든 사용자가 경로를 읽을 수 있음
+      allow read: if true;
+      // 인증된 사용자만 경로 생성 가능
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      // 경로 소유자만 업데이트 가능
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // 경로 소유자만 삭제 가능
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+    
+    // 다른 모든 문서는 기본적으로 접근 거부
     match /{document=**} {
-      allow read, write: if request.time < timestamp.date(2025, 1, 24);
+      allow read, write: if false;
     }
   }
 }
