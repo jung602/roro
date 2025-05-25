@@ -4,7 +4,7 @@ import Head from 'next/head';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { getRoutes } from '@/services/routeService';
-import { SavedRoute } from '@/types/map';
+import { Route, SavedRoute } from '@/types/route';
 import { GeoPoint, ArcData, GlobeProps } from '../src/components/map/Globe';
 import {  RotateCw } from 'lucide-react';
 
@@ -185,7 +185,7 @@ const GlobePage: NextPage = () => {
       
       if (selectedRoute) {
         router.push({
-          pathname: '/map',
+          pathname: '/routes/map',
           query: {
             routeId: point.routeId,
             userId: point.userId,

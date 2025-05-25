@@ -81,7 +81,7 @@ export default function Search() {
   const handleSearch = () => {
     if (locations.length >= 2) {
       router.push({
-        pathname: '/routeConfirmation',
+        pathname: '/routes/routeConfirmation',
         query: { locations: JSON.stringify(locations) },
       });
     } else {

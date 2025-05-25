@@ -2,9 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+@import './components.css';
+
 :root {
-  --foreground-rgb: 0, 0, 0;
-  --background-rgb: 28, 25, 23;
+  --foreground-rgb: 255, 255, 255;
+  --background-start-rgb: 28, 25, 23;
+  --background-end-rgb: 28, 25, 23;
 }
 
 @layer base {
@@ -17,7 +20,7 @@
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: rgb(var(--background-rgb));
+  background: rgb(var(--background-start-rgb));
 }
 
 /* Font weight utilities */

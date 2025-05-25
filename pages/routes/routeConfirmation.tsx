@@ -19,6 +19,7 @@ import dynamic from 'next/dynamic';
 import BackButton from '@/components/common/BackButton';
 import SortableItem from '@/components/common/SortableItem';
 import { uploadPlaceImages } from '@/services/imageService';
+import { blobUrlToFile } from '@/utils/imageUtils';
 
 const DynamicCircleMarker = dynamic(() => import('@/components/map/CircleMarker'), { ssr: false });
 
@@ -34,6 +35,8 @@ export default function RouteConfirmation() {
   const [locations, setLocations] = useState<Location[]>([]);
   const [mapCenter, setMapCenter] = useState<google.maps.LatLngLiteral>({ lat: 37.5666805, lng: 126.9784147 });
   const [routeMarkers, setRouteMarkers] = useState<google.maps.LatLngLiteral[]>([]);
+  const [isUploadingImages, setIsUploadingImages] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{[key: number]: number}>({});
   const directionsRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
   const mapRef = useRef<google.maps.Map | null>(null);
   const router = useRouter();
@@ -110,18 +113,71 @@ export default function RouteConfirmation() {
       try {
         const parsedLocations = JSON.parse(router.query.locations as string) as Location[];
         console.log('Parsed locations:', parsedLocations);
-        setLocations(parsedLocations);
-        if (parsedLocations.length > 0 && 
-            typeof parsedLocations[0].lat === 'number' && 
-            typeof parsedLocations[0].lng === 'number' &&
-            !isNaN(parsedLocations[0].lat) && 
-            !isNaN(parsedLocations[0].lng)) {
+        
+        // blob URL로 전달받은 이미지들을 실제 파일로 업로드 처리
+        const processLocationsWithImages = async () => {
+          setIsUploadingImages(true);
+          
+          const processedLocations = await Promise.all(
+            parsedLocations.map(async (location, index) => {
+              if (location.images && location.images.length > 0) {
+                try {
+                  // blob URL을 File 객체로 변환
+                  const blobUrls = location.images.filter(img => img.url.startsWith('blob:'));
+                  
+                  if (blobUrls.length > 0) {
+                    const files = await Promise.all(
+                      blobUrls.map(img => blobUrlToFile(img.url, `photo-${index}.jpg`))
+                    );
+                    
+                    // 파일들을 실제로 업로드
+                    const uploadedImages = await uploadPlaceImages(
+                      `place-${location.name}-${index}`,
+                      files,
+                      (progress) => {
+                        setUploadProgress(prev => ({
+                          ...prev,
+                          [index]: progress
+                        }));
+                      }
+                    );
+                    
+                    return {
+                      ...location,
+                      images: uploadedImages
+                    };
+                  }
+                } catch (error) {
+                  console.error(`Failed to upload images for location ${index}:`, error);
+                  // 업로드 실패 시 이미지 없이 처리
+                  return {
+                    ...location,
+                    images: []
+                  };
+                }
+              }
+              return location;
+            })
+          );
+          
+          setLocations(processedLocations);
+          setIsUploadingImages(false);
+          setUploadProgress({});
+          
+          if (processedLocations.length > 0 && 
+              typeof processedLocations[0].lat === 'number' && 
+              typeof processedLocations[0].lng === 'number' &&
+              !isNaN(processedLocations[0].lat) && 
+              !isNaN(processedLocations[0].lng)) {
           setMapCenter({ 
-            lat: parsedLocations[0].lat, 
-            lng: parsedLocations[0].lng 
+              lat: processedLocations[0].lat, 
+              lng: processedLocations[0].lng 
           });
-          console.log('Map center set to:', { lat: parsedLocations[0].lat, lng: parsedLocations[0].lng });
+            console.log('Map center set to:', { lat: processedLocations[0].lat, lng: processedLocations[0].lng });
         }
+        };
+        
+        processLocationsWithImages();
       } catch (error) {
         console.error("Failed to parse locations:", error);
         setLocations([]);
@@ -242,13 +298,35 @@ export default function RouteConfirmation() {
 
   const handleConfirm = () => {
     router.push({
-      pathname: '/map',
+      pathname: '/routes/map',
       query: { locations: JSON.stringify(locations) },
     });
   };
 
   if (loadError) return <div>Error loading maps</div>;
   if (!isLoaded) return <div>Loading...</div>;
+  
+  // 이미지 업로드 중일 때 로딩 화면 표시
+  if (isUploadingImages) {
+    return (
+      <div className="flex flex-col items-center justify-center h-[100dvh] bg-stone-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-stone-900 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-stone-900 mb-2">이미지 업로드 중...</h2>
+          <p className="text-stone-600">잠시만 기다려주세요.</p>
+          {Object.keys(uploadProgress).length > 0 && (
+            <div className="mt-4 space-y-2">
+              {Object.entries(uploadProgress).map(([index, progress]) => (
+                <div key={index} className="text-sm text-stone-700">
+                  위치 {parseInt(index) + 1}: {Math.round(progress)}%
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[100dvh]">

@@ -3,21 +3,29 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { GoogleMap, DirectionsRenderer, useJsApiLoader } from '@react-google-maps/api';
 import * as THREE from 'three';
-import { saveRoute, updateRoute, deleteRoute } from '../src/services/routeService';
-import { uploadPlaceImages, deletePlaceImage } from '../src/services/imageService';
-import BackButton from '../src/components/common/BackButton';
+import { createRoute, updateRoute, deleteRoute } from '@/services/routeMutationService';
+import { uploadPlaceImages, deletePlaceImage } from '@/services/imageService';
+import BackButton from '@/components/common/BackButton';
 import { googleMapsConfig } from '@/utils/googleMapsConfig';
 import { useAuth } from '@/contexts/AuthContext';
 import LocationGallery from '@/components/route/LocationGallery';
 import EditableLocationGallery from '@/components/route/EditableLocationGallery';
 import RouteInfo from '@/components/route/RouteInfo';
 import { Location, RouteData } from '@/types/route';
-import { showErrorMessage } from '@/utils/errorHandler';
+import { handleError } from '@/utils/errorHandler';
 import { X } from 'lucide-react';
 
-const DynamicRoute3D = dynamic(() => import('../src/components/route/Route3D'), {
-  ssr: false,
-});
+// 지도 컴포넌트를 동적으로 로드 (SSR 비활성화)
+const MapComponent = dynamic(
+  () => import('@/components/map/MapComponent'),
+  { ssr: false }
+);
+
+// 3D 경로 컴포넌트 동적 로드
+const Route3D = dynamic(
+  () => import('@/components/route/Route3D'),
+  { ssr: false }
+);
 
 const center = { lat: 37.7749, lng: -122.4194 };
 
@@ -146,26 +154,24 @@ export default function Map() {
       const totalDuration = directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0);
       const totalDistance = directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0);
 
-      const route = {
-        id: `route-${Date.now()}`,
+      const route: RouteData = {
         title: routeTitle,
-        points,
+        locations: locationList,
+        points: points,
         userId: user.uid,
-        created: new Date(),
-        updated: new Date(),
-        duration: Math.floor(totalDuration / 60),
-        distance: totalDistance / 1000,
-        path3D: path3D.map(vector => ({ x: vector.x, y: vector.y, z: vector.z }))
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
-      await saveRoute(route, user.uid);
+      await createRoute(route);
       router.push('/mypage');
     } catch (error) {
-      showErrorMessage(error);
+      const errorDetails = handleError(error, 'route');
+      alert(errorDetails.message);
     } finally {
       setIsSaving(false);
     }
-  }, [isSaving, locationList, routeTitle, user, directions, router, path3D]);
+  }, [isSaving, locationList, routeTitle, user, directions, router]);
 
   const handleAddImages = useCallback(async (locationIndex: number, files: FileList, onProgress?: (progress: number) => void) => {
     try {
@@ -200,7 +206,8 @@ export default function Map() {
       };
       setLocationList(newLocationList);
     } catch (error) {
-      showErrorMessage(error);
+      const errorDetails = handleError(error, 'storage');
+      alert(errorDetails.message);
     }
   }, [editedLocations, locationList]);
 
@@ -227,16 +234,16 @@ export default function Map() {
       };
       setLocationList(newLocationList);
     } catch (error) {
-      showErrorMessage(error);
+      const errorDetails = handleError(error, 'storage');
+      alert(errorDetails.message);
     }
   }, [editedLocations, locationList]);
 
   const handleSaveChanges = useCallback(async () => {
     try {
-      if (!user) return;
+      if (!user || !router.query.routeId) return;
       
-      const route = {
-        id: router.query.routeId as string,
+      const routeData: Partial<RouteData> = {
         title: router.query.title as string,
         points: editedLocations.map((location, index) => ({
           id: `point-${index}`,
@@ -244,14 +251,10 @@ export default function Map() {
           lat: location.lat!,
           lng: location.lng!,
           images: location.images
-        })),
-        created: new Date(),
-        updated: new Date(),
-        duration: directions ? Math.floor(directions.routes[0].legs.reduce((total, leg) => total + leg.duration!.value, 0) / 60) : 0,
-        distance: directions ? directions.routes[0].legs.reduce((total, leg) => total + leg.distance!.value, 0) / 1000 : 0,
+        }))
       };
 
-      await updateRoute(route, user.uid);
+      await updateRoute(router.query.routeId as string, routeData);
       setIsEditing(false);
       setLocationList(editedLocations);
       alert('변경사항이 저장되었습니다.');
@@ -259,7 +262,7 @@ export default function Map() {
       console.error('Failed to save changes:', error);
       alert('변경사항 저장에 실패했습니다.');
     }
-  }, [editedLocations, fromFeed, router]);
+  }, [editedLocations, router.query, user]);
 
   const toggleEditMode = useCallback(() => {
     setIsEditing(prev => !prev);
@@ -271,7 +274,7 @@ export default function Map() {
     
     if (window.confirm('정말로 이 경로를 삭제하시겠습니까?')) {
       try {
-        await deleteRoute(router.query.routeId as string, user.uid);
+        await deleteRoute(router.query.routeId as string);
         router.push('/mypage');
       } catch (error) {
         console.error('Failed to delete route:', error);
@@ -294,7 +297,7 @@ export default function Map() {
         <div className="flex-1 relative min-h-0">
           <div className="absolute inset-0 dot-grid"></div>
           <div className="absolute inset-0">
-            <DynamicRoute3D path3D={path3D} locations={locationList} />
+            <Route3D path3D={path3D} locations={locationList} />
           </div>
         </div>
         

@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { Home, Plus, User } from 'lucide-react';
+import { Home, Plus, User, Camera } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function NavigationBar() {
@@ -8,7 +8,7 @@ export default function NavigationBar() {
 
   const handleMyPageClick = () => {
     if (!user) {
-      router.push('/login');
+      router.push('/auth/login');
     } else {
       router.push('/mypage');
     }
@@ -39,6 +39,16 @@ export default function NavigationBar() {
           className={getButtonStyles('/search')}
         >
           <Plus
+            size={24} strokeWidth={1}
+            className="transition-transform duration-200"
+          />
+        </button>
+        
+        <button
+          onClick={() => router.push('/camera')}
+          className={getButtonStyles('/camera')}
+        >
+          <Camera
             size={24} strokeWidth={1}
             className="transition-transform duration-200"
           />

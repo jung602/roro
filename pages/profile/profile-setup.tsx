@@ -16,7 +16,7 @@ export default function ProfileSetup() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/auth/login');
     }
     if (user) {
       setNickname(user.displayName || '');

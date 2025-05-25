@@ -1,152 +1,100 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '@/contexts/AuthContext';
-import { collection, query, where, getDocs, getDoc, doc, orderBy, Timestamp } from 'firebase/firestore';
-import { db, auth } from '@/lib/firebase';
-import Image from 'next/image';
-import NavigationBar from '@/components/common/NavigationBar';
+import { getUserRoutes } from '@/services/routeQueryService';
+import { SavedRoute } from '@/types/route';
+import { auth } from '@/lib/firebase';
 import { User, Settings, LogOut } from 'lucide-react';
 import RouteThumbnail from '../src/components/route/RouteThumbnail';
-
-interface Route {
-  id: string;
-  title: string;
-  points: Array<{
-    id: string;
-    name: string;
-    lat: number;
-    lng: number;
-    images?: { url: string; path: string; }[];
-  }>;
-  userId: string;
-  userNickname: string;
-  userProfileImage: string;
-  createdAt: string;
-  duration: number;
-  distance: number;
-  path3D?: Array<{ x: number; y: number; z: number; }>;
-}
-
-interface UserData {
-  nickname?: string;
-  profileImageUrl?: string;
-}
+import ProfileImage from '../src/components/common/ProfileImage';
 
 export default function MyPage() {
   const { user, userData, loading } = useAuth();
   const router = useRouter();
-  const [routes, setRoutes] = useState<Route[]>([]);
+  const [routes, setRoutes] = useState<SavedRoute[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/auth/login');
     }
   }, [user, loading, router]);
 
   useEffect(() => {
     const fetchMyRoutes = async () => {
-      if (!user || !userData) return;
+      if (!user) {
+        console.log('No user found, skipping route fetch');
+        return;
+      }
 
       try {
         console.log('Fetching routes for user:', user.uid);
+        console.log('User object:', user);
+        console.log('UserData object:', userData);
         
-        const routesQuery = query(
-          collection(db, 'routes'),
-          where('userId', '==', user.uid)
-        );
+        setIsLoading(true);
+        const userRoutes = await getUserRoutes(user.uid);
+        console.log('Fetched user routes:', userRoutes);
+        console.log('Number of routes found:', userRoutes.length);
         
-        const queryWithOrder = query(
-          collection(db, 'routes'),
-          where('userId', '==', user.uid),
-          orderBy('created', 'desc')
-        );
-        
-        let querySnapshot;
-        try {
-          querySnapshot = await getDocs(routesQuery);
-        } catch (error) {
-          querySnapshot = await getDocs(queryWithOrder);
-        }
-
-        console.log('Query snapshot size:', querySnapshot.size);
-        console.log('Raw query snapshot:', querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-        
-        const routesData = querySnapshot.docs.map(doc => {
-          const data = doc.data();
-          console.log('Processing route document:', { id: doc.id, ...data });
+        if (userRoutes.length === 0) {
+          console.log('No routes found for user. Checking Firestore directly...');
           
-          const createdAt = data.created instanceof Timestamp 
-            ? data.created.toDate().toISOString()
-            : new Date().toISOString();
-
-          return {
-            id: doc.id,
-            title: data.title || '',
-            points: data.points || [],
-            userId: data.userId,
-            userNickname: userData.nickname || '사용자',
-            userProfileImage: userData.profileImageUrl || '',
-            createdAt,
-            duration: data.duration || 0,
-            distance: data.distance || 0,
-            path3D: data.path3D || []
-          };
-        }) as Route[];
-
-        console.log('Final processed routes:', routesData);
-        setRoutes(routesData);
+          // 직접 Firestore 확인
+          const { collection, query, where, getDocs } = await import('firebase/firestore');
+          const { db } = await import('@/lib/firebase');
+          
+          const routesQuery = query(
+            collection(db, 'routes'),
+            where('userId', '==', user.uid)
+          );
+          
+          const querySnapshot = await getDocs(routesQuery);
+          console.log('Direct Firestore query results:', querySnapshot.size);
+          console.log('Documents:', querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+        }
+        
+        setRoutes(userRoutes);
       } catch (error) {
         console.error('데이터 불러오기 실패:', error);
-        if (error instanceof Error && error.message.includes('index')) {
-          console.log('인덱스를 생성해주세요:', error.message);
-        }
+        console.error('Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined
+        });
       } finally {
         setIsLoading(false);
       }
     };
 
     if (user && !loading) {
+      console.log('Starting fetchMyRoutes...');
       fetchMyRoutes();
+    } else {
+      console.log('Conditions not met for fetchMyRoutes:', { user: !!user, loading });
     }
   }, [user, loading, userData]);
 
-  const formatDate = (dateString: string) => {
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) {
-        return '날짜 없음';
-      }
-      return date.toLocaleDateString('ko-KR', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      });
-    } catch (error) {
-      console.error('날짜 변환 실패:', error);
-      return '날짜 없음';
-    }
-  };
+  const handleRouteClick = (route: SavedRoute) => {
+    const locations = route.points.map(point => ({
+      name: point.name || '',
+      address: `${point.lat},${point.lng}`,
+      lat: point.lat,
+      lng: point.lng,
+      images: point.images
+    }));
 
-  const renderProfileImage = (route: Route) => {
-    if (!route.userProfileImage) {
-      return <User size={20} className="text-stone-400" />;
-    }
-
-    try {
-      return (
-        <Image
-          src={route.userProfileImage}
-          alt={route.userNickname || '사용자'}
-          width={32}
-          height={32}
-          className="rounded-full object-cover"
-        />
-      );
-    } catch (error) {
-      console.error('프로필 이미지 렌더링 실패:', error);
-      return <User size={20} className="text-stone-400" />;
-    }
+    router.push({
+      pathname: '/routes/map',
+      query: { 
+        locations: JSON.stringify(locations),
+        fromFeed: 'true',
+        title: route.title,
+        userNickname: route.userNickname,
+        userProfileImage: route.userProfileImage,
+        userId: route.userId,
+        routeId: route.id
+      },
+    });
   };
 
   const handleLogout = async () => {
@@ -160,112 +108,99 @@ export default function MyPage() {
 
   if (loading || isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900"></div>
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-stone-900 pb-20">
-      <div className="max-w-screen-2xl mx-auto p-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-stone-100">My Page</h1>
+    <div className="container-main">
+      <div className="page-container">
+        {/* 프로필 헤더 */}
+        <div className="flex justify-between items-center mb-8 p-6 bg-stone-800 rounded-lg">
+          <div className="flex items-center gap-6">
+            <div className="relative w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center overflow-hidden">
+              <ProfileImage 
+                src={userData?.profileImageUrl || null} 
+                alt={userData?.nickname || '사용자'}
+                size={96}
+              />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-2xl font-medium text-stone-100 mb-2">
+                {userData?.nickname || '사용자'}
+              </h2>
+              <div className="flex gap-6">
+                <div className="text-center">
+                  <div className="text-xl font-semibold text-stone-100">{routes.length}</div>
+                  <div className="text-sm text-stone-400">게시물</div>
+                </div>
+              </div>
+            </div>
+          </div>
           <div className="flex gap-2">
             <button
-              onClick={() => router.push('/profile-edit')}
-              className="flex items-center gap-2 px-4 py-2 bg-stone-800 rounded-lg hover:bg-stone-700 transition-colors text-stone-300"
+              onClick={() => router.push('/profile/profile-edit')}
+              className="flex items-center gap-2 px-4 py-2 bg-stone-700 rounded-lg hover:bg-stone-600 transition-colors text-stone-300"
             >
               <Settings size={18} />
             </button>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-2 px-4 py-2 bg-stone-800 rounded-lg hover:bg-stone-700 transition-colors text-stone-300"
+              className="flex items-center gap-2 px-4 py-2 bg-stone-700 rounded-lg hover:bg-stone-600 transition-colors text-stone-300"
             >
               <LogOut size={18} />
             </button>
           </div>
         </div>
 
-        <div className="flex items-center gap-6 mb-8 p-6 bg-stone-800 rounded-lg">
-          <div className="relative w-24 h-24 rounded-full bg-stone-700 flex items-center justify-center overflow-hidden">
-            {userData?.profileImageUrl ? (
-              <Image
-                src={userData.profileImageUrl}
-                alt={userData.nickname || '사용자'}
-                width={96}
-                height={96}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                className="rounded-full"
-              />
-            ) : (
-              <User size={40} className="text-stone-400" />
-            )}
-          </div>
-          <div className="flex-1">
-            <h2 className="text-2xl font-medium text-stone-100 mb-2">
-              {userData?.nickname || '사용자'}
-            </h2>
-            <div className="flex gap-6">
-              <div className="text-center">
-                <div className="text-xl font-semibold text-stone-100">{routes.length}</div>
-                <div className="text-sm text-stone-400">게시물</div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="h-px bg-stone-700 mb-8"></div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {routes.map((route) => (
-            <div
-              key={route.id}
-              className="bg-stone-800 rounded-lg overflow-hidden cursor-pointer hover:bg-stone-700 transition-colors"
-              onClick={() => router.push(`/map?locations=${encodeURIComponent(JSON.stringify(route.points.map(point => ({
-                name: point.name || '',
-                address: `${point.lat},${point.lng}`,
-                lat: point.lat,
-                lng: point.lng,
-                images: point.images
-              }))))}&fromFeed=true&title=${encodeURIComponent(route.title)}&userNickname=${encodeURIComponent(route.userNickname)}&userProfileImage=${encodeURIComponent(route.userProfileImage)}&userId=${encodeURIComponent(route.userId)}&routeId=${encodeURIComponent(route.id)}`)}
-            >
-              <div className="relative bg-stone-900 h-40 m-1 rounded">
-                <RouteThumbnail points={route.points} />
-              </div>
-              <div className="px-4 py-2">
-                <div className="flex items-center mb-2">
-                  <div className="relative w-8 h-8 mr-2 rounded-full bg-stone-700 flex items-center justify-center overflow-hidden">
-                    {renderProfileImage(route)}
-                  </div>
-                  <span className="text-sm text-stone-300">{route.userNickname || '익명'}</span>
+        <div className="page-content">
+          <h1 className="page-title">My Routes</h1>
+          <div className="grid-layout">
+            {routes.map((route) => (
+              <div
+                key={route.id}
+                className="card"
+                onClick={() => handleRouteClick(route)}
+              >
+                <div className="card-image-container">
+                  <RouteThumbnail points={route.points} />
                 </div>
-                <div className="flex justify-between align-center">
-                  <div className="text-base text-stone-100 font-semibold">{route.title}</div>
-                  <div className="text-xs text-stone-600 font-medium">
-                    {formatDate(route.createdAt)}
-                  </div>
-                </div>
-                <div className="mt-6 mb-2 flex justify-end space-x-2">
-                  {route.points.map((_, index) => (
-                    <div
-                      key={index}
-                      className="w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center"
-                    >
-                      <span className="text-xs text-stone-900 font-bold">{index + 1}</span>
+                <div className="card-content">
+                  <div className="profile-section">
+                    <div className="profile-image-container">
+                      <ProfileImage src={route.userProfileImage} alt={route.userNickname || '사용자'} />
                     </div>
-                  ))}
+                    <span className="profile-name">{route.userNickname || '익명'}</span>
+                  </div>
+                  <div className="flex justify-between align-center">
+                    <div className="card-title">{route.title}</div>
+                    <div className="date-text">
+                      {route.created.toLocaleDateString()}
+                    </div>
+                  </div>
+                  <div className="point-markers">
+                    {route.points.map((_, index) => (
+                      <div
+                        key={index}
+                        className="point-marker"
+                      >
+                        <span className="point-marker-text">{index + 1}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {routes.length === 0 && (
-          <div className="text-center py-8">
-            <p className="text-stone-500">저장된 경로가 없습니다.</p>
+            ))}
           </div>
-        )}
+
+          {routes.length === 0 && (
+            <div className="text-center py-8">
+              <p className="text-stone-500">저장된 경로가 없습니다.</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

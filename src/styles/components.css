@@ -1,0 +1,78 @@
+/* 레이아웃 */
+.container-main {
+  @apply relative h-dvh w-dvw;
+}
+
+.page-container {
+  @apply bg-stone-900 pb-20 overflow-x-hidden;
+}
+
+.page-content {
+  @apply text-center text-stone-100 p-4;
+}
+
+.grid-layout {
+  @apply max-w-screen-2xl mx-auto grid gap-4 md:grid-cols-2 lg:grid-cols-3 text-left px-4;
+}
+
+/* 카드 */
+.card {
+  @apply bg-stone-800 rounded-lg overflow-hidden cursor-pointer hover:bg-stone-700 transition-colors;
+}
+
+.card-image-container {
+  @apply relative bg-stone-900 h-40 m-1 rounded;
+}
+
+.card-content {
+  @apply px-4 py-2;
+}
+
+/* 프로필 섹션 */
+.profile-section {
+  @apply flex items-center mb-2;
+}
+
+.profile-image-container {
+  @apply relative w-8 h-8 mr-2 rounded-full bg-stone-700 flex items-center justify-center overflow-hidden;
+}
+
+.profile-name {
+  @apply text-sm text-stone-300;
+}
+
+/* 타이틀 */
+.card-title {
+  @apply text-base text-stone-100 font-semibold;
+}
+
+.page-title {
+  @apply text-xl font-semibold mt-12 mb-8;
+}
+
+/* 날짜 */
+.date-text {
+  @apply text-xs text-stone-600 font-medium;
+}
+
+/* 포인트 마커 */
+.point-markers {
+  @apply mt-6 mb-2 flex justify-end space-x-2;
+}
+
+.point-marker {
+  @apply w-4 h-4 rounded-full bg-stone-200 flex items-center justify-center;
+}
+
+.point-marker-text {
+  @apply text-xs text-stone-900 font-bold;
+}
+
+/* 로딩 스피너 */
+.loading-container {
+  @apply flex items-center justify-center min-h-screen;
+}
+
+.loading-spinner {
+  @apply animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-stone-200;
+} 

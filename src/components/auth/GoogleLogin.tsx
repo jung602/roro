@@ -33,7 +33,7 @@ export default function GoogleLogin() {
           });
           
           // 프로필 설정 페이지로 이동
-          router.push('/profile-setup');
+          router.push('/profile/profile-setup');
         } else {
           // 프로필 정보가 있으면 메인 페이지로 이동
           router.push('/');
